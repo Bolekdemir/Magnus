@@ -183,7 +183,10 @@ main { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-
 .b-sqs { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
 .sq { position: relative; }
 .sq-l { background: var(--sq-light); }
-.sq-d { background: var(--sq-dark); }
+.sq-d { background-color: var(--sq-dark);
+  /* one wavy gloss band spans the whole board; each dark square shows its slice of it */
+  background-image: url("../icons/board-wave.svg"); background-repeat: no-repeat; background-size: 800% 800%;
+  background-position: calc(var(--c, 0) * 100% / 7) calc(var(--r, 0) * 100% / 7); }
 .sq::after { content: ""; position: absolute; inset: 0; pointer-events: none; transition: background-color var(--d-ui) ease; }
 .sq.m-last::after { background: var(--m-last); }
 .sq.m-sel::after { background: var(--m-sel); }

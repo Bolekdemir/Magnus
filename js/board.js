@@ -64,6 +64,8 @@ export class Board {
         const d = document.createElement('div');
         d.className = 'sq ' + ((f + r) % 2 ? 'sq-l' : 'sq-d');
         d.dataset.sq = sq;
+        d.style.setProperty('--c', col);
+        d.style.setProperty('--r', row);
         if (this.coords) {
           if (row === 7) d.insertAdjacentHTML('beforeend', `<span class="co co-f">${FILES[f]}</span>`);
           if (col === 0) d.insertAdjacentHTML('beforeend', `<span class="co co-r">${r + 1}</span>`);
