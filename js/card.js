@@ -1,7 +1,7 @@
 // Renders an explanation card (from explain.js) to HTML.
-import { CLASSES, isBad, assess, TONE } from './explain.js?v=4ff97de7db';
-import { renderText } from './glossary.js?v=4ff97de7db';
-import { icon } from './icons.js?v=4ff97de7db';
+import { CLASSES, isBad, assess, TONE } from './explain.js?v=9c0f86e500';
+import { renderText } from './glossary.js?v=9c0f86e500';
+import { icon } from './icons.js?v=9c0f86e500';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 

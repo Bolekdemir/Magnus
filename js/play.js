@@ -1,18 +1,18 @@
 // Play against Stockfish at a chosen strength, with optional coaching.
-import { Chess } from '../vendor/chess.js?v=4ff97de7db';
-import { Board } from './board.js?v=4ff97de7db';
-import { engine } from './engine.js?v=4ff97de7db';
-import { scoreToCp, isBad, moveFacts, TONE, winPct, assess, forOpponent } from './explain.js?v=4ff97de7db';
-import { explainAsync } from './explainer.js?v=4ff97de7db';
-import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=4ff97de7db';
-import { renderCard, badge } from './card.js?v=4ff97de7db';
-import { renderText } from './glossary.js?v=4ff97de7db';
-import { icon } from './icons.js?v=4ff97de7db';
-import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=4ff97de7db';
-import { store } from './store.js?v=4ff97de7db';
-import { haptic } from './haptics.js?v=4ff97de7db';
-import { topPatterns } from './profile.js?v=4ff97de7db';
-import { paintEval, resetEval } from './evalbar.js?v=4ff97de7db';
+import { Chess } from '../vendor/chess.js?v=9c0f86e500';
+import { Board } from './board.js?v=9c0f86e500';
+import { engine } from './engine.js?v=9c0f86e500';
+import { scoreToCp, isBad, moveFacts, TONE, winPct, assess, forOpponent } from './explain.js?v=9c0f86e500';
+import { explainAsync } from './explainer.js?v=9c0f86e500';
+import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=9c0f86e500';
+import { renderCard, badge } from './card.js?v=9c0f86e500';
+import { renderText } from './glossary.js?v=9c0f86e500';
+import { icon } from './icons.js?v=9c0f86e500';
+import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=9c0f86e500';
+import { store } from './store.js?v=9c0f86e500';
+import { haptic } from './haptics.js?v=9c0f86e500';
+import { topPatterns } from './profile.js?v=9c0f86e500';
+import { paintEval, resetEval } from './evalbar.js?v=9c0f86e500';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional

@@ -798,3 +798,6 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 
 /* light mode: warmer, less bright stone base; header follows it */
 :root:not([data-theme="dark"]) .topbar { background: color-mix(in srgb, var(--bg) 90%, transparent); }
+/* waves are a light-mode thing */
+:root[data-theme="dark"] .bg-waves { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-waves { display: none; } }

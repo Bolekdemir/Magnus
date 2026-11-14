@@ -1,17 +1,17 @@
 // Game review: analyse every position, explain every move, replay lines, retry mistakes.
-import { Chess } from '../vendor/chess.js?v=4ff97de7db';
-import { Board } from './board.js?v=4ff97de7db';
-import { engine } from './engine.js?v=4ff97de7db';
-import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE, forOpponent } from './explain.js?v=4ff97de7db';
-import { explainAsync } from './explainer.js?v=4ff97de7db';
-import { renderCard, badge, steps } from './card.js?v=4ff97de7db';
-import { icon } from './icons.js?v=4ff97de7db';
-import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js?v=4ff97de7db';
-import { store } from './store.js?v=4ff97de7db';
-import { renderText } from './glossary.js?v=4ff97de7db';
-import { haptic } from './haptics.js?v=4ff97de7db';
-import { recordGame, topPatterns } from './profile.js?v=4ff97de7db';
-import { paintEval } from './evalbar.js?v=4ff97de7db';
+import { Chess } from '../vendor/chess.js?v=9c0f86e500';
+import { Board } from './board.js?v=9c0f86e500';
+import { engine } from './engine.js?v=9c0f86e500';
+import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE, forOpponent } from './explain.js?v=9c0f86e500';
+import { explainAsync } from './explainer.js?v=9c0f86e500';
+import { renderCard, badge, steps } from './card.js?v=9c0f86e500';
+import { icon } from './icons.js?v=9c0f86e500';
+import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js?v=9c0f86e500';
+import { store } from './store.js?v=9c0f86e500';
+import { renderText } from './glossary.js?v=9c0f86e500';
+import { haptic } from './haptics.js?v=9c0f86e500';
+import { recordGame, topPatterns } from './profile.js?v=9c0f86e500';
+import { paintEval } from './evalbar.js?v=9c0f86e500';
 
 export const SAMPLE_PGN = `[Event "Casual game"]
 [White "You"]
