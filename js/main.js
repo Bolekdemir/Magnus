@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=d6164d3d9c';
-import { mountReview, SAMPLE_PGN } from './review.js?v=d6164d3d9c';
-import { mountPlay } from './play.js?v=d6164d3d9c';
-import { icon } from './icons.js?v=d6164d3d9c';
-import { store } from './store.js?v=d6164d3d9c';
-import { termInfo } from './glossary.js?v=d6164d3d9c';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=d6164d3d9c';
-import { topPatterns } from './profile.js?v=d6164d3d9c';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=d6164d3d9c';
-import { drawBackgroundPosition } from './bgposition.js?v=d6164d3d9c';
-import { engine } from './engine.js?v=d6164d3d9c';
+import { Board } from './board.js?v=1a68508788';
+import { mountReview, SAMPLE_PGN } from './review.js?v=1a68508788';
+import { mountPlay } from './play.js?v=1a68508788';
+import { icon } from './icons.js?v=1a68508788';
+import { store } from './store.js?v=1a68508788';
+import { termInfo } from './glossary.js?v=1a68508788';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=1a68508788';
+import { topPatterns } from './profile.js?v=1a68508788';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=1a68508788';
+import { drawBackgroundPosition } from './bgposition.js?v=1a68508788';
+import { engine } from './engine.js?v=1a68508788';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -94,10 +94,32 @@ function paintSettings() {
   document.getElementById('theme-btn').innerHTML = icon(dark ? 'sun' : 'moon');
 }
 paintSettings();
-document.getElementById('theme-btn').addEventListener('click', () => {
+// Theme changes animate: a circle grows out of the button you pressed (crossfade where unsupported).
+function setTheme(next, from) {
+  if (next === settings.theme) return;
+  const apply = () => { settings.theme = next; applySettings(); paintSettings(); };
+  if (!canFade()) { apply(); return; }
+  if (document.startViewTransition && canMove()) {
+    const r = from?.getBoundingClientRect();
+    const x = r ? r.left + r.width / 2 : innerWidth - 40;
+    const y = r ? r.top + r.height / 2 : 30;
+    const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    const t = document.startViewTransition(apply);
+    t.ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+        { duration: 700, easing: 'cubic-bezier(0.77, 0, 0.175, 1)', pseudoElement: '::view-transition-new(root)' },
+      );
+    }).catch(() => {});
+    return;
+  }
+  root.classList.add('theme-fade');
+  apply();
+  setTimeout(() => root.classList.remove('theme-fade'), 450);
+}
+document.getElementById('theme-btn').addEventListener('click', (e) => {
   const dark = settings.theme === 'dark' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-  settings.theme = dark ? 'light' : 'dark';
-  applySettings(); paintSettings();
+  setTheme(dark ? 'light' : 'dark', e.currentTarget);
 });
 const menu = document.getElementById('set-menu');
 const setBtn = document.getElementById('set-btn');
@@ -117,7 +139,7 @@ document.addEventListener('click', (e) => { if (!e.isTrusted) return; if (!menu.
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) toggleMenu(false); });
 menu.addEventListener('click', (e) => {
   const m = e.target.closest('[data-motion]'); if (m) { settings.motion = m.dataset.motion; applySettings(); }
-  const t = e.target.closest('[data-theme-opt]'); if (t) { settings.theme = t.dataset.themeOpt; applySettings(); }
+  const t = e.target.closest('[data-theme-opt]'); if (t) { setTheme(t.dataset.themeOpt, t); return; }
   const gl = e.target.closest('[data-glass-opt]'); if (gl) { settings.glass = gl.dataset.glassOpt; applySettings(); }
   const h = e.target.closest('[data-hap]'); if (h) { setHaptics(h.dataset.hap === 'on'); if (h.dataset.hap === 'on') haptic('success'); }
   if (e.target.closest('#hap-test')) { if (!hapticsEnabled()) { setHaptics(true); } haptic('success'); }

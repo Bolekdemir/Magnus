@@ -912,3 +912,44 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 /* dark mode keeps only the faint back wave */
 :root[data-theme="dark"] .bg-waves .w2, :root[data-theme="dark"] .bg-waves .w3 { display: none; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-waves .w2, :root:not([data-theme="light"]) .bg-waves .w3 { display: none; } }
+
+/* =====================  light mode palette: champagne, ivory, French blue, gold, navy  ===================== */
+:root {
+  --champagne: #E3CDA6; --ivory: #F6F1E6; --french: #7896C2; --gold: #C6993E; --navy-2: #22335C;
+  --accent: #34528A; --accent-soft: #DEE6F2;
+  --sq-light: #F6F1E6; --sq-dark: #7F9CC6; --co-light: #22335C; --co-dark: #F6F1E6;
+  --m-last: rgba(198, 153, 62, 0.40); --m-sel: rgba(34, 51, 92, 0.22);
+  --glow-a: rgba(120, 150, 194, 0.30); --glow-b: rgba(227, 205, 166, 0.65); --glow-c: rgba(198, 153, 62, 0.20);
+  --grid-c: rgba(34, 51, 92, 0.06);
+  --wave-1: rgba(120, 150, 194, 0.20); --wave-2: rgba(227, 205, 166, 0.50); --wave-3: rgba(34, 51, 92, 0.10);
+  --c-great: #3D6FB0;
+}
+:root[data-theme="light"] .way.feature { background: #22335C; }
+:root[data-theme="light"] .way.feature .ic-wrap { background: rgba(227, 205, 166, 0.18); color: #E3CDA6; }
+:root[data-theme="light"] .switch:checked { background: #4F72A8; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 0 0 4px rgba(79, 114, 168, 0.16); }
+:root[data-theme="light"] .level .meter i.on { background: #7896C2; }
+:root[data-theme="light"] .level[aria-pressed="true"] .meter i.on { background: #22335C; }
+:root[data-theme="light"] .progress > i, :root[data-theme="light"] .m-share i { background: linear-gradient(90deg, #7896C2, #22335C); }
+:root[data-theme="light"] .m-share { background: rgba(198, 153, 62, 0.28); }
+:root[data-theme="light"] .m-status.is-you { background: rgba(120, 150, 194, 0.18); color: #34528A; }
+:root[data-theme="light"] .hero h1 em { color: #34528A; }
+:root[data-theme="light"] .checklist li::before { background: #E8DCC4; color: #8A6420; }
+@media (prefers-color-scheme: light) {
+:root:not([data-theme="dark"]) .way.feature { background: #22335C; }
+:root:not([data-theme="dark"]) .way.feature .ic-wrap { background: rgba(227, 205, 166, 0.18); color: #E3CDA6; }
+:root:not([data-theme="dark"]) .switch:checked { background: #4F72A8; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 0 0 4px rgba(79, 114, 168, 0.16); }
+:root:not([data-theme="dark"]) .level .meter i.on { background: #7896C2; }
+:root:not([data-theme="dark"]) .level[aria-pressed="true"] .meter i.on { background: #22335C; }
+:root:not([data-theme="dark"]) .progress > i, :root:not([data-theme="dark"]) .m-share i { background: linear-gradient(90deg, #7896C2, #22335C); }
+:root:not([data-theme="dark"]) .m-share { background: rgba(198, 153, 62, 0.28); }
+:root:not([data-theme="dark"]) .m-status.is-you { background: rgba(120, 150, 194, 0.18); color: #34528A; }
+:root:not([data-theme="dark"]) .hero h1 em { color: #34528A; }
+:root:not([data-theme="dark"]) .checklist li::before { background: #E8DCC4; color: #8A6420; }
+}
+
+/* =====================  theme switch animation  ===================== */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) { z-index: 2; }
+.theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
+  transition: background-color 380ms ease, color 380ms ease, border-color 380ms ease, box-shadow 380ms ease, fill 380ms ease !important;
+}
