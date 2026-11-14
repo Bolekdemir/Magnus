@@ -2,7 +2,7 @@
 // Text uses glossary markers: [[key|plain phrase|pro phrase]] (see glossary.js).
 import {
   Chess, VAL, NAME, other, seeOn, loosePieces, threatsBy, forkFrom, lineTacticFrom,
-  discoveredAfter, features, playUci, balance, moveUci, uciToSan,
+  discoveredAfter, features, playUci, balance, moveUci, uciToSan, attacksFrom,
 } from './chessutil.js';
 
 // ---------- scores ----------
@@ -78,7 +78,7 @@ export function assess(wp) {
 
 // ---------- facts about a single move ----------
 // Returns {gains:[], costs:[], tags:Set, sacrifice:bool}
-export function moveFacts(fenBefore, uci, plyIndex = 20) {
+export function moveFacts(fenBefore, uci, plyIndex = 20, prevUci = null) {
   const before = new Chess(fenBefore);
   const c = before.turn();
   const opp = other(c);
@@ -106,7 +106,9 @@ export function moveFacts(fenBefore, uci, plyIndex = 20) {
     const victim = VAL[move.captured] + (move.promotion ? VAL[move.promotion] - 1 : 0);
     const back = seeOn(after, move.to); // what the opponent wins back on that square
     const net = victim - back;
-    if (net > 0 && back === 0) gains.push(`Wins ${their(move.captured, move.to)} for free.`), tags.add('wins-material');
+    const recapture = prevUci && prevUci.slice(2, 4) === move.to;
+    if (recapture && back === 0) { gains.push(`Takes back on ${move.to}, finishing the trade.`); tags.add('trade'); tags.add('recapture'); }
+    else if (net > 0 && back === 0) gains.push(`Wins ${their(move.captured, move.to)} for free.`), tags.add('wins-material');
     else if (net > 0) gains.push(`Takes ${their(move.captured, move.to)} and comes out ahead in the [[exchange|trade|exchange]] (+${net}).`), tags.add('wins-material');
     else if (net === 0) gains.push(`Trades: takes ${their(move.captured, move.to)}, and your opponent can take back.`), tags.add('trade');
     else { sacrifice = true; tags.add('sac'); }
@@ -164,7 +166,8 @@ export function moveFacts(fenBefore, uci, plyIndex = 20) {
     tags.add('mate-threat');
   }
   const prevWins = new Map(tB.wins.map((w) => [w.sq, w.gain]));
-  const newWin = tA.wins.find((w) => w.gain >= 2 && !(prevWins.get(w.sq) >= w.gain) && w.sq !== move.to);
+  const hits = new Set(attacksFrom(after, move.to));
+  const newWin = tA.wins.find((w) => w.gain >= 2 && hits.has(w.sq) && !(prevWins.get(w.sq) >= w.gain) && w.sq !== move.to);
   if (newWin && !fork) {
     gains.push(`[[threat|Threatens|Threatens]] to win ${their(newWin.piece, newWin.sq)}.`);
     tags.add('threat');
@@ -174,11 +177,15 @@ export function moveFacts(fenBefore, uci, plyIndex = 20) {
   const looseBefore = loosePieces(before, c);
   const looseAfter = loosePieces(after, c);
   const afterMap = new Map(looseAfter.map((l) => [l.sq, l.gain]));
-  for (const l of looseBefore) {
+  for (const l of after.inCheck() ? [] : looseBefore) {
     if (l.gain < 2) continue;
     if (l.sq === move.from) {
       if (!afterMap.has(move.to)) { gains.push(`Moves ${your(l.piece, l.sq)} to safety. It was [[hanging|under attack and could be lost|hanging]].`); tags.add('saves'); }
-    } else if (!afterMap.has(l.sq)) { gains.push(`Protects ${your(l.piece, l.sq)}, which [[hanging|could have been taken for free|was hanging]].`); tags.add('saves'); }
+    } else if (!afterMap.has(l.sq)) {
+      if (move.captured) gains.push(`Removes the piece that was attacking ${your(l.piece, l.sq)}.`);
+      else gains.push(`Protects ${your(l.piece, l.sq)}, which [[hanging|could have been taken for free|was hanging]].`);
+      tags.add('saves');
+    }
     break;
   }
   const oT_B = threatsBy(before, opp);
@@ -192,7 +199,7 @@ export function moveFacts(fenBefore, uci, plyIndex = 20) {
     if (l.gain < 1) continue;
     if (l.sq === move.to && move.captured && VAL[move.captured] >= l.gain) continue; // just a trade
     if (l.sq === move.to && sacrifice) {
-      costs.push(`Your ${NAME[l.piece]} on ${l.sq} can be taken. That's a [[sacrifice|deliberate gift of material|sacrifice]], so it only works if something better comes back.`);
+      costs.push(`Puts your ${NAME[l.piece]} where it can be taken. Giving material away only pays off if you get something bigger back ([[sacrifice|sacrifice]]).`);
     } else {
       costs.push(`Leaves ${your(l.piece, l.sq)} [[hanging|where it can be taken for free|hanging]] (worth ${pts(l.gain)}).`);
     }
@@ -263,13 +270,14 @@ export function explainMove(ctx) {
   const bestWp = winPct(scoreToCp(best?.score));
   const secondWp = bl[1] ? winPct(scoreToCp(bl[1].score)) : null;
 
-  const facts = moveFacts(fen, uci, ply);
+  const facts = moveFacts(fen, uci, ply, ctx.prevUci);
   let playedWp;
   if (facts.after?.isCheckmate()) playedWp = 100;
   else if (facts.after && (facts.after.isStalemate() || facts.after.isDraw())) playedWp = 50;
   else playedWp = 100 - winPct(scoreToCp(al[0]?.score));
   const isBest = uci === bestUci;
-  const cls = classify({ bestWp, playedWp: isBest ? bestWp : playedWp, isBest, secondWp, legalCount });
+  let cls = classify({ bestWp, playedWp: isBest ? bestWp : playedWp, isBest, secondWp, legalCount });
+  if (cls === 'great' && facts.tags.has('recapture')) cls = 'best'; // an obvious recapture isn't a "find"
   const loss = isBest ? 0 : Math.max(0, bestWp - playedWp);
 
   const card = {
@@ -329,7 +337,8 @@ function diagnose(card, facts, ctx, mover) {
 
   // Allowed a forced mate
   if (replyScore?.mate > 0) {
-    why.push(`After this, your opponent has a forced checkmate in ${replyScore.mate}. It starts with ${reply?.san || 'a strong reply'}.`);
+    const how = reply?.note?.startsWith('takes your') ? `, which ${reply.note}` : '';
+    why.push(`After this, your opponent has a forced checkmate in ${replyScore.mate}. It starts with ${reply?.san || 'a strong reply'}${how}.`);
     return 'allowed-mate';
   }
   // Missed a forced mate
@@ -337,8 +346,23 @@ function diagnose(card, facts, ctx, mover) {
     why.push(`You had a forced checkmate in ${bl[0].score.mate}, starting with ${card.bestSan}.`);
     return 'missed-mate';
   }
-  // Hung a piece: the opponent's best reply takes it
+  // Missed a bigger win: the best move won more than whatever went wrong after this one
   const loose = loosePieces(facts.after, mover);
+  const bestUci0 = bl[0]?.pv?.[0];
+  if (bestUci0 && bestUci0 !== ctx.uci) {
+    const bpos = new Chess(ctx.fen);
+    const bm = bpos.move({ from: bestUci0.slice(0, 2), to: bestUci0.slice(2, 4), promotion: bestUci0[4] || undefined });
+    if (bm.captured) {
+      const won = VAL[bm.captured] - seeOn(bpos, bm.to);
+      const lost = loose[0]?.gain || 0;
+      if (won >= 3 && won > lost) {
+        why.push(`You missed ${card.bestSan}, which wins ${their(bm.captured, bm.to)} (${worth(won)}).`);
+        if (lost >= 1 && reply?.note.startsWith('takes your')) why.push(`On top of that, ${your(loose[0].piece, loose[0].sq)} can now be taken with ${reply.san}.`);
+        return 'missed-tactic';
+      }
+    }
+  }
+  // Hung a piece: the opponent's best reply takes it
   if (reply && reply.note.startsWith('takes your') && loose.length) {
     const target = loose.find((l) => al[0].pv[0].slice(2, 4) === l.sq) || loose[0];
     if (target.gain >= 2 || (soon && soon.net <= -2)) {

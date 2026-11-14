@@ -184,7 +184,8 @@ export function mountReview(root) {
     const g = state.game;
     const m = g.moves[i];
     try {
-      g.cards[i] = explainMove({ fen: g.fens[i], uci: m.from + m.to + (m.promotion || ''), ply: i, before: g.analysis[i], after: g.analysis[i + 1] });
+      const pm = g.moves[i - 1];
+      g.cards[i] = explainMove({ fen: g.fens[i], uci: m.from + m.to + (m.promotion || ''), ply: i, before: g.analysis[i], after: g.analysis[i + 1], prevUci: pm ? pm.from + pm.to : null });
     } catch (e) {
       console.error(e);
       g.cards[i] = null;
@@ -427,7 +428,8 @@ export function mountReview(root) {
         const wp = chess.isCheckmate() ? 100 : 100 - winPct(scoreToCp(after.lines[0]?.score));
         const isBest = uci === before.lines[0].pv[0];
         const cls = classify({ bestWp, playedWp: wp, isBest, secondWp: null, legalCount: 2 });
-        const card = explainMove({ fen, uci, ply: i, before, after });
+        const pm = g.moves[i - 1];
+        const card = explainMove({ fen, uci, ply: i, before, after, prevUci: pm ? pm.from + pm.to : null });
         const el = $('#rv-card');
         if (!isBad(cls)) {
           haptic('success');

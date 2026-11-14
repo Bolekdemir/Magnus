@@ -237,7 +237,9 @@ export function mountPlay(root, { onReview }) {
     let after;
     try { after = await engine().analyze(st.chess.fen(), { depth: 12, multipv: 1 }); } catch { return; }
     if (token.cancelled) return;
-    const card = explainMove({ fen: fenBefore, uci, ply, before, after });
+    const hist = st.chess.history({ verbose: true });
+    const pm = hist[hist.length - 2];
+    const card = explainMove({ fen: fenBefore, uci, ply, before, after, prevUci: pm ? pm.from + pm.to : null });
     st.grades_[ply] = card;
     paintGrade(ply, card);
     const short = isBad(card.cls) ? (card.why[0] || '') : (card.gains[0] || 'A solid, quiet move.');

@@ -196,7 +196,7 @@ export function lineTacticFrom(chess, sq) {
           const bv = back.piece === 'k' ? 100 : VAL[back.piece];
           let res = null;
           if (bv > fv && bv > VAL[p.type] && front.piece !== 'p') res = { kind: 'pin', front, back };
-          else if (fv > bv && fv >= VAL[p.type] && front.piece !== 'p') res = { kind: 'skewer', front, back };
+          else if (fv > bv && fv > VAL[p.type] && back.piece !== 'p' && front.piece !== 'p') res = { kind: 'skewer', front, back };
           if (res && (!best || bv + fv > best.score)) best = { ...res, score: bv + fv };
           break;
         }
@@ -214,6 +214,8 @@ export function discoveredAfter(before, after, move) {
   for (const row of after.board()) {
     for (const p of row) {
       if (!p || p.color !== color || !'brq'.includes(p.type) || p.square === move.to) continue;
+      const prev = before.get(p.square);
+      if (!prev || prev.type !== p.type || prev.color !== p.color) continue; // e.g. the rook that just castled
       const nowHits = attacksFrom(after, p.square);
       const wasHits = new Set(before.get(p.square) ? attacksFrom(before, p.square) : []);
       for (const s of nowHits) {
