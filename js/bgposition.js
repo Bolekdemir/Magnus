@@ -1,7 +1,7 @@
 // A random chess position drawn onto the background grid's own squares.
 // Each load plays a plausible random opening, then lays the pieces out on the grid,
 // centered near the top, where the grid's fade is strongest.
-import { Chess } from '../vendor/chess.js?v=78576bd371';
+import { Chess } from '../vendor/chess.js?v=c722a7f77b';
 
 
 function randomPosition() {

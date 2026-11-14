@@ -693,3 +693,65 @@ html { background: var(--bg); }
 .bg-pc { width: var(--sq, 36px); height: var(--sq, 36px); opacity: 0.1; }
 :root[data-theme="dark"] .bg-pc { opacity: 0.085; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-pc { opacity: 0.085; } }
+
+/* =====================  3-column layout on wide screens  ===================== */
+main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
+.split3 > .side-left { display: grid; gap: 14px; min-width: 0; align-content: start; }
+@media (min-width: 1440px) {
+  .split3 { grid-template-columns: minmax(0, 310px) minmax(0, 1fr) minmax(0, 410px); gap: 32px; }
+  .split3 > .side-left { grid-column: 1; grid-row: 1; position: sticky; top: 84px; }
+  .split3 > .board-col { grid-column: 2; grid-row: 1; }
+  .split3 > .side { grid-column: 3; grid-row: 1; }
+}
+@media (min-width: 901px) and (max-width: 1439px) {
+  .split3 > .board-col { grid-column: 1; grid-row: 1 / span 2; }
+  .split3 > .side, .split3 > .side-left { grid-column: 2; position: static; }
+  .split3.left-first > .side-left { grid-row: 1; }
+  .split3.left-first > .side { grid-row: 2; }
+  .split3.left-last > .side { grid-row: 1; }
+  .split3.left-last > .side-left { grid-row: 2; }
+}
+@media (max-width: 900px) {
+  .split3.left-first > .side-left { order: 1; }
+  .split3.left-first > .side { order: 2; }
+}
+
+/* play: match card */
+.m-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.m-status { font-size: 12.5px; font-weight: 650; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--fg-2); }
+.m-status.is-you { background: color-mix(in srgb, var(--c-best) 16%, transparent); color: var(--c-best); }
+.m-status.is-bot { background: color-mix(in srgb, var(--c-great) 14%, transparent); color: var(--c-great); }
+.m-opp { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.m-opp .lv-pc { width: 38px; height: 38px; background-size: contain; background-repeat: no-repeat; }
+.m-opp b { display: block; font-size: 15px; }
+.m-opp .muted { font-size: 12.5px; }
+.m-move { font-size: 12.5px; color: var(--muted); }
+.m-rows { display: grid; gap: 8px; margin: 14px 0 12px; }
+.m-rows > div { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.m-share { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--c-great) 30%, transparent); overflow: hidden; }
+.m-share i { display: block; height: 100%; background: linear-gradient(90deg, var(--teal), var(--c-best)); border-radius: 999px; transition: width var(--sp-soft-d, 400ms) var(--sp-soft, ease); }
+.m-share-l { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+#pl-stats, #pl-focus { display: grid; gap: 12px; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: step; }
+.checklist li { display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; align-items: center; counter-increment: step; }
+.checklist li::before { content: counter(step); grid-row: span 2; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-weight: 750; font-size: 13px;
+  background: var(--accent-soft); color: var(--accent); }
+.checklist b { font-size: 14px; }
+.checklist span { font-size: 13px; color: var(--muted); }
+.focus-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--accent-soft); font-size: 13.5px; }
+.focus-note .ic { color: var(--accent); width: 18px; height: 18px; margin-top: 2px; flex: none; }
+.focus-note b { display: block; }
+
+:root[data-view="play"] .topbar-in, :root[data-view="review"] .topbar-in { max-width: 1720px; }
+/* key moments in the narrow left column: badge + move on top, reason underneath */
+.side-left .moment { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; }
+.side-left .moment .muted { grid-column: 1 / -1; margin-left: 0; }
+.rv-game { display: grid; gap: 12px; }
+.rv-game .m-rows { margin: 0; }
+.g-players { display: grid; gap: 8px; }
+.g-players > div { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+.g-players .muted { margin-left: auto; font-size: 12.5px; }
+.g-dot { width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25); }
+.g-w { background: #F7F1E4; } .g-b { background: #243031; }
+/* the result popup sits on a fading backdrop; a solid card avoids the glass re-blurring when the fade ends */
+.overlay .result.panel { background-color: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }

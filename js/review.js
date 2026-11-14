@@ -1,17 +1,17 @@
 // Game review: analyse every position, explain every move, replay lines, retry mistakes.
-import { Chess } from '../vendor/chess.js?v=78576bd371';
-import { Board } from './board.js?v=78576bd371';
-import { engine } from './engine.js?v=78576bd371';
-import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE } from './explain.js?v=78576bd371';
-import { explainAsync } from './explainer.js?v=78576bd371';
-import { renderCard, badge, steps } from './card.js?v=78576bd371';
-import { icon } from './icons.js?v=78576bd371';
-import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js?v=78576bd371';
-import { store } from './store.js?v=78576bd371';
-import { renderText } from './glossary.js?v=78576bd371';
-import { haptic } from './haptics.js?v=78576bd371';
-import { recordGame } from './profile.js?v=78576bd371';
-import { paintEval } from './evalbar.js?v=78576bd371';
+import { Chess } from '../vendor/chess.js?v=c722a7f77b';
+import { Board } from './board.js?v=c722a7f77b';
+import { engine } from './engine.js?v=c722a7f77b';
+import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE } from './explain.js?v=c722a7f77b';
+import { explainAsync } from './explainer.js?v=c722a7f77b';
+import { renderCard, badge, steps } from './card.js?v=c722a7f77b';
+import { icon } from './icons.js?v=c722a7f77b';
+import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js?v=c722a7f77b';
+import { store } from './store.js?v=c722a7f77b';
+import { renderText } from './glossary.js?v=c722a7f77b';
+import { haptic } from './haptics.js?v=c722a7f77b';
+import { recordGame, topPatterns } from './profile.js?v=c722a7f77b';
+import { paintEval } from './evalbar.js?v=c722a7f77b';
 
 export const SAMPLE_PGN = `[Event "Casual game"]
 [White "You"]
@@ -48,7 +48,7 @@ export function mountReview(root) {
       </div>
     </div>
   </div>
-  <div class="rv-main split" hidden>
+  <div class="rv-main split split3 left-first" hidden>
     <div class="board-col">
       <div class="player" data-p="top"></div>
       <div class="board-frame"><div class="evalbar" aria-hidden="true"><div class="evalbar-w"></div><span class="evalbar-n"></span></div><div class="rv-board"></div></div>
@@ -62,8 +62,11 @@ export function mountReview(root) {
         <button class="ctrl" data-nav="flip" aria-label="Flip board">${icon('flip')}</button>
       </div>
     </div>
-    <aside class="side">
+    <aside class="side-left">
       <div class="panel panel-pad summary" id="rv-summary"></div>
+      <div class="panel panel-pad rv-game" id="rv-game"></div>
+    </aside>
+    <aside class="side">
       <div class="panel" id="rv-card" aria-live="polite"></div>
       <div class="panel"><div class="moves" id="rv-moves"></div></div>
       <button type="button" class="btn btn-ghost" id="rv-new">${icon('clip')}Review another game</button>
@@ -132,6 +135,7 @@ export function mountReview(root) {
     board.setOrientation(side);
     $('.evalbar').classList.toggle('flip', side === 'b');
     setPlayers();
+    renderGameInfo();
     renderMoves();
     goto(0, false);
     renderSummary();
@@ -148,6 +152,30 @@ export function mountReview(root) {
     const tag = (c, n) => `<span class="avatar">${icon(c === state.side ? 'user' : 'robot')}</span><b>${esc(n)}</b><span class="muted">${c === 'w' ? 'White' : 'Black'}${c === state.side ? ' · you' : ''}</span>`;
     root.querySelector('[data-p="top"]').innerHTML = tag(...top);
     root.querySelector('[data-p="bottom"]').innerHTML = tag(...bot);
+  }
+
+  function renderGameInfo() {
+    const g = state.game;
+    const h = g.headers || {};
+    const name = (n, fb) => (n && n !== '?' ? n : fb);
+    const res = h.Result && h.Result !== '*' ? h.Result : (g.final.isCheckmate() ? (g.final.turn() === 'w' ? '0-1' : '1-0') : '');
+    const youWon = (res === '1-0' && state.side === 'w') || (res === '0-1' && state.side === 'b');
+    const outcome = !res ? 'Unfinished' : res === '1/2-1/2' ? 'Draw' : youWon ? 'You won' : 'You lost';
+    const ending = g.final.isCheckmate() ? 'by checkmate' : g.final.isStalemate() ? 'by stalemate' : '';
+    const { list } = topPatterns(1);
+    const top = list[0];
+    $('#rv-game').innerHTML = `
+      <span class="eyebrow">Game</span>
+      <div class="g-players">
+        <div><span class="g-dot g-w"></span><b>${esc(name(h.White, 'White'))}</b>${state.side === 'w' ? '<span class="muted">you</span>' : ''}</div>
+        <div><span class="g-dot g-b"></span><b>${esc(name(h.Black, 'Black'))}</b>${state.side === 'b' ? '<span class="muted">you</span>' : ''}</div>
+      </div>
+      <div class="m-rows">
+        <div><span class="muted">Result</span><b>${esc(outcome)}${ending ? ' ' + ending : ''}</b></div>
+        <div><span class="muted">Length</span><b>${Math.ceil(g.moves.length / 2)} moves</b></div>
+        ${h.Date && h.Date !== '????.??.??' ? `<div><span class="muted">Played</span><b>${esc(h.Date.replace(/\./g, '-'))}</b></div>` : ''}
+      </div>
+      ${top ? `<div class="focus-note">${icon('target')}<div><b>Your focus: ${esc(top.label.toLowerCase())}</b><span>${esc(top.habit || '')}</span></div></div>` : ''}`;
   }
 
   // ---------- analysis ----------

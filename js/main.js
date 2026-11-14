@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=78576bd371';
-import { mountReview, SAMPLE_PGN } from './review.js?v=78576bd371';
-import { mountPlay } from './play.js?v=78576bd371';
-import { icon } from './icons.js?v=78576bd371';
-import { store } from './store.js?v=78576bd371';
-import { termInfo } from './glossary.js?v=78576bd371';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=78576bd371';
-import { topPatterns } from './profile.js?v=78576bd371';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=78576bd371';
-import { drawBackgroundPosition } from './bgposition.js?v=78576bd371';
-import { engine } from './engine.js?v=78576bd371';
+import { Board } from './board.js?v=c722a7f77b';
+import { mountReview, SAMPLE_PGN } from './review.js?v=c722a7f77b';
+import { mountPlay } from './play.js?v=c722a7f77b';
+import { icon } from './icons.js?v=c722a7f77b';
+import { store } from './store.js?v=c722a7f77b';
+import { termInfo } from './glossary.js?v=c722a7f77b';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=c722a7f77b';
+import { topPatterns } from './profile.js?v=c722a7f77b';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=c722a7f77b';
+import { drawBackgroundPosition } from './bgposition.js?v=c722a7f77b';
+import { engine } from './engine.js?v=c722a7f77b';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -173,7 +173,9 @@ function go(name, { push = true } = {}) {
   }
   if (name === 'home') renderHome();
   const el = views[name];
-  if (canFade()) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: EASE_OUT });
+  document.querySelector('main').dataset.view = name;
+  document.documentElement.dataset.view = name;
+  // slide only: fading an ancestor would stop the frosted panels from seeing the background until it ends
   if (canMove()) { const s = spring(0.8, 0.42); el.animate([{ transform: 'translateY(14px)' }, { transform: 'none' }], { duration: s.duration, easing: s.easing }); }
   requestAnimationFrame(() => { syncAllSegs(false); syncNav(true); });
   hideTip();

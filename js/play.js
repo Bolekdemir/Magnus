@@ -1,17 +1,18 @@
 // Play against Stockfish at a chosen strength, with optional coaching.
-import { Chess } from '../vendor/chess.js?v=78576bd371';
-import { Board } from './board.js?v=78576bd371';
-import { engine } from './engine.js?v=78576bd371';
-import { scoreToCp, isBad, moveFacts, TONE, winPct } from './explain.js?v=78576bd371';
-import { explainAsync } from './explainer.js?v=78576bd371';
-import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=78576bd371';
-import { renderCard, badge } from './card.js?v=78576bd371';
-import { renderText } from './glossary.js?v=78576bd371';
-import { icon } from './icons.js?v=78576bd371';
-import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=78576bd371';
-import { store } from './store.js?v=78576bd371';
-import { haptic } from './haptics.js?v=78576bd371';
-import { paintEval, resetEval } from './evalbar.js?v=78576bd371';
+import { Chess } from '../vendor/chess.js?v=c722a7f77b';
+import { Board } from './board.js?v=c722a7f77b';
+import { engine } from './engine.js?v=c722a7f77b';
+import { scoreToCp, isBad, moveFacts, TONE, winPct, assess } from './explain.js?v=c722a7f77b';
+import { explainAsync } from './explainer.js?v=c722a7f77b';
+import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=c722a7f77b';
+import { renderCard, badge } from './card.js?v=c722a7f77b';
+import { renderText } from './glossary.js?v=c722a7f77b';
+import { icon } from './icons.js?v=c722a7f77b';
+import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=c722a7f77b';
+import { store } from './store.js?v=c722a7f77b';
+import { haptic } from './haptics.js?v=c722a7f77b';
+import { topPatterns } from './profile.js?v=c722a7f77b';
+import { paintEval, resetEval } from './evalbar.js?v=c722a7f77b';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional
@@ -56,7 +57,7 @@ export function mountPlay(root, { onReview }) {
       </div>
     </div>
   </div>
-  <div class="pl-game split" hidden>
+  <div class="pl-game split split3 left-last" hidden>
     <div class="board-col">
       <div class="player" data-p="top"></div>
       <div class="board-frame"><div class="evalbar" aria-hidden="true"><div class="evalbar-w"></div><span class="evalbar-n"></span></div><div class="pl-board"></div></div>
@@ -73,6 +74,11 @@ export function mountPlay(root, { onReview }) {
       <div class="panel opp-line" id="pl-opp" hidden></div>
       <div class="panel"><div class="moves" id="pl-moves"></div></div>
       <button type="button" class="btn btn-ghost" id="pl-new">New game</button>
+    </aside>
+    <aside class="side-left">
+      <div class="panel panel-pad" id="pl-match"></div>
+      <div class="panel panel-pad" id="pl-stats"></div>
+      <div class="panel panel-pad" id="pl-focus"></div>
     </aside>
   </div>`;
 
@@ -116,6 +122,7 @@ export function mountPlay(root, { onReview }) {
     st.chess = new Chess();
     st.grades_ = [];
     st.over = false;
+    st.lastWp = null;
     $('.pl-setup').hidden = true;
     $('.pl-game').hidden = false;
     board.setOrientation(st.user);
@@ -126,6 +133,7 @@ export function mountPlay(root, { onReview }) {
     $('#pl-opp').hidden = true;
     resetEval(evalEl());
     setPlayers();
+    renderFocus();
     renderMoves();
     coach(`<div class="card"><span class="eyebrow">Game on</span><p style="margin:0">You're playing ${st.user === 'w' ? 'White' : 'Black'} against <b>${esc(level().name)}</b> (≈ ${level().elo}). ${st.user === 'w' ? 'Your move.' : 'The bot moves first.'}</p></div>`);
     window.scrollTo({ top: 0 });
@@ -142,7 +150,65 @@ export function mountPlay(root, { onReview }) {
     try { a.shallow = (await engine().analyze(fen, { depth: 4, multipv: 1 })).bestmove; } catch { /* optional */ }
     return a;
   }
-  function showEval(fen, analysis) { paintEval(evalEl(), fen, analysis, st.user === 'b'); }
+  function showEval(fen, analysis) {
+    paintEval(evalEl(), fen, analysis, st.user === 'b');
+    const top = analysis?.lines?.[0];
+    if (top) {
+      const pos = new Chess(fen);
+      const moverWp = winPct(scoreToCp(top.score));
+      st.lastWp = pos.turn() === st.user ? moverWp : 100 - moverWp;
+    }
+    refreshLeft();
+  }
+
+  // ----- left column: match, live stats, focus -----
+  function refreshLeft() {
+    if (!st.chess) return;
+    const L = level();
+    const li = LEVELS.indexOf(L);
+    const h = st.chess.history();
+    const status = st.over ? 'Game over' : st.chess.turn() === st.user ? 'Your move' : 'Bot is thinking';
+    const val = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+    let you = 0, bot = 0;
+    for (const row of st.chess.board()) for (const p of row) if (p) { if (p.color === st.user) you += val[p.type]; else bot += val[p.type]; }
+    const diff = you - bot;
+    const material = diff === 0 ? 'Even material' : diff > 0 ? `You're up ${diff}` : `Bot is up ${-diff}`;
+    const verdict = st.lastWp == null ? 'Even start' : cap(assess(st.lastWp));
+    const share = st.lastWp == null ? 50 : Math.round(st.lastWp);
+    $('#pl-match').innerHTML = `
+      <div class="m-head"><span class="eyebrow">Match</span><span class="m-status ${st.over ? '' : st.chess.turn() === st.user ? 'is-you' : 'is-bot'}">${esc(status)}</span></div>
+      <div class="m-opp"><span class="lv-pc pc-${LV_PC[li]}"></span><div><b>${esc(L.name)}</b><span class="muted mono">≈ ${L.elo}</span></div><span class="m-move mono">Move ${Math.floor(h.length / 2) + 1}</span></div>
+      <div class="m-rows">
+        <div><span class="muted">Position</span><b>${esc(verdict)}</b></div>
+        <div><span class="muted">Material</span><b>${esc(material)}</b></div>
+      </div>
+      <div class="m-share" aria-label="Your winning chances ${share}%"><i style="width:${share}%"></i></div>
+      <div class="m-share-l"><span>You ${share}%</span><span>Bot ${100 - share}%</span></div>`;
+    const mine = [], theirs = [];
+    (st.grades_ || []).forEach((c) => { if (!c) return; (c.mover === st.user ? mine : theirs).push(c); });
+    const acc = (list) => list.length ? (list.reduce((s, c) => s + c.accuracy, 0) / list.length).toFixed(1) : '–';
+    const counts = {};
+    mine.forEach((c) => { counts[c.cls] = (counts[c.cls] || 0) + 1; });
+    const order = ['magnus', 'brilliant', 'great', 'best', 'excellent', 'good', 'inaccuracy', 'miss', 'mistake', 'blunder'];
+    const tally = order.filter((k) => counts[k]).map((k) => badge(k).replace('</span>', ` <span class="mono">×${counts[k]}</span></span>`)).join('');
+    $('#pl-stats').innerHTML = `
+      <span class="eyebrow">Live stats</span>
+      <div class="acc-row"><div class="acc you"><span>Your accuracy</span><strong>${acc(mine)}</strong></div><div class="acc"><span>Bot accuracy</span><strong>${acc(theirs)}</strong></div></div>
+      <div class="tally">${tally || '<p class="empty-note">Your move grades will collect here.</p>'}</div>`;
+  }
+  function renderFocus() {
+    const { list } = topPatterns(1);
+    const top = list[0];
+    $('#pl-focus').innerHTML = `
+      <span class="eyebrow">Before every move</span>
+      <ol class="checklist">
+        <li><b>Checks</b><span>Can either side give check?</span></li>
+        <li><b>Captures</b><span>What can be taken, and is it defended?</span></li>
+        <li><b>Threats</b><span>What did their last move attack?</span></li>
+      </ol>
+      ${top ? `<div class="focus-note">${icon('target')}<div><b>Your focus: ${esc(top.label.toLowerCase())}</b><span>${esc(top.habit || '')}</span></div></div>` : ''}`;
+  }
+  const cap = (t) => t[0].toUpperCase() + t.slice(1);
 
   function setPlayers() {
     const L = level();
@@ -288,6 +354,7 @@ export function mountPlay(root, { onReview }) {
     try { card = await explainAsync({ fen: fenBefore, uci, ply, before, after, prevUci: pm ? pm.from + pm.to : null }); } catch { return; }
     if (token.cancelled) return;
     st.grades_[ply] = card;
+    refreshLeft();
     if (!st.grades) return;
     paintGrade(ply, card);
     board.setBadge(uci.slice(2, 4), card.cls, { delay: 60 });
@@ -310,6 +377,7 @@ export function mountPlay(root, { onReview }) {
     if (token.cancelled || st.chess.history().length !== p.ply + 1) return;
     st.grades_[p.ply] = card;
     paintGrade(p.ply, card);
+    refreshLeft();
     board.setBadge(p.uci.slice(2, 4), card.cls, { delay: 40 });
     const opp = $('#pl-opp');
     opp.hidden = false;
@@ -425,6 +493,7 @@ export function mountPlay(root, { onReview }) {
     el.innerHTML = html || '<p class="empty-note" style="grid-column:1/-1;padding:8px">Moves will appear here.</p>';
     st.grades_?.forEach((c, i) => c && paintGrade(i, c));
     el.scrollTop = el.scrollHeight;
+    refreshLeft();
     el.querySelectorAll('.mv').forEach((b) => b.addEventListener('click', () => {
       const c = st.grades_?.[+b.dataset.ply];
       if (c) coach(`<div class="card">${renderCard(c, { actions: {} })}</div>`);
@@ -483,6 +552,7 @@ export function mountPlay(root, { onReview }) {
 
   function endGame(result, why) {
     st.over = true;
+    refreshLeft();
     board.setInteractive(null);
     $('#pl-hint').disabled = true;
     $('#pl-undo').disabled = true;
