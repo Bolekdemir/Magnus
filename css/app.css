@@ -831,7 +831,7 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
   .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .hero-demo { width: min(100%, 540px); justify-self: center; }
   .hero-demo .board { max-width: none; margin: 0; }
-  .demo-card { left: -16%; bottom: -30px; width: min(340px, 68%); }
+  .demo-card { left: -20%; bottom: -10px; width: min(370px, 74%); }
 }
 
 /* =====================  dark mode: navy in the mix  ===================== */
