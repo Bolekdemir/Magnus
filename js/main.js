@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=9c8568e0e8';
-import { mountReview, SAMPLE_PGN } from './review.js?v=9c8568e0e8';
-import { mountPlay } from './play.js?v=9c8568e0e8';
-import { icon } from './icons.js?v=9c8568e0e8';
-import { store } from './store.js?v=9c8568e0e8';
-import { termInfo } from './glossary.js?v=9c8568e0e8';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=9c8568e0e8';
-import { topPatterns } from './profile.js?v=9c8568e0e8';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=9c8568e0e8';
-import { drawBackgroundPosition } from './bgposition.js?v=9c8568e0e8';
-import { engine } from './engine.js?v=9c8568e0e8';
+import { Board } from './board.js?v=f7d2ae9db2';
+import { mountReview, SAMPLE_PGN } from './review.js?v=f7d2ae9db2';
+import { mountPlay } from './play.js?v=f7d2ae9db2';
+import { icon } from './icons.js?v=f7d2ae9db2';
+import { store } from './store.js?v=f7d2ae9db2';
+import { termInfo } from './glossary.js?v=f7d2ae9db2';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=f7d2ae9db2';
+import { topPatterns } from './profile.js?v=f7d2ae9db2';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=f7d2ae9db2';
+import { drawBackgroundPosition } from './bgposition.js?v=f7d2ae9db2';
+import { engine } from './engine.js?v=f7d2ae9db2';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -166,22 +166,13 @@ function setupScrollHints() {
       hint.classList.toggle('is-gone', [...seen.values()].some(Boolean));
     }, { threshold: [0, 0.1, 0.18, 0.4] });
     [...split.children].filter((c) => c !== boardCol).forEach((c) => io.observe(c));
-    // the fold: the board column fills exactly the first screen, with the board itself centred in what you can see
+    // the fold: the board column fills exactly the first screen; its contents are centred in it by CSS
     const fold = () => {
       if (!boardCol.offsetParent || innerWidth > 640 || scrollY > 40) return;
       const root = document.documentElement.style;
       const colTop = boardCol.getBoundingClientRect().top + scrollY;
       const h = Math.round(innerHeight - colTop);
       root.setProperty('--fold-h', h + 'px');
-      const pad = parseFloat(getComputedStyle(boardCol).paddingTop) || 0;
-      const board = boardCol.querySelector('.pl-board, .rv-board')?.getBoundingClientRect();
-      const ctrls = boardCol.querySelector('.ctrls')?.getBoundingClientRect();
-      if (!board || !ctrls || !board.height) return;
-      const above = board.top + scrollY - colTop - pad;          // player row + eval bar above the board
-      const below = ctrls.bottom + scrollY - colTop - pad;       // everything down to the buttons
-      const room = 46;                                           // space kept for the scroll pill
-      const want = h / 2 - board.height / 2 - above;
-      root.setProperty('--center-pad', Math.max(0, Math.min(want, h - room - below)) + 'px');
     };
     new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) fold(); }).observe(boardCol);
     addEventListener('resize', () => requestAnimationFrame(fold));
