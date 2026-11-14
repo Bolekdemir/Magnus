@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=f1cff92466';
-import { mountReview, SAMPLE_PGN } from './review.js?v=f1cff92466';
-import { mountPlay } from './play.js?v=f1cff92466';
-import { icon } from './icons.js?v=f1cff92466';
-import { store } from './store.js?v=f1cff92466';
-import { termInfo } from './glossary.js?v=f1cff92466';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=f1cff92466';
-import { topPatterns } from './profile.js?v=f1cff92466';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=f1cff92466';
-import { drawBackgroundPosition } from './bgposition.js?v=f1cff92466';
-import { engine } from './engine.js?v=f1cff92466';
+import { Board } from './board.js?v=502ad4b034';
+import { mountReview, SAMPLE_PGN } from './review.js?v=502ad4b034';
+import { mountPlay } from './play.js?v=502ad4b034';
+import { icon } from './icons.js?v=502ad4b034';
+import { store } from './store.js?v=502ad4b034';
+import { termInfo } from './glossary.js?v=502ad4b034';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=502ad4b034';
+import { topPatterns } from './profile.js?v=502ad4b034';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=502ad4b034';
+import { drawBackgroundPosition } from './bgposition.js?v=502ad4b034';
+import { engine } from './engine.js?v=502ad4b034';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -210,8 +210,8 @@ function renderHome() {
     </section>
     <section class="ways">
       <a href="#play" class="way feature" data-view="play"><span class="ic-wrap">${icon('robot')}</span><h3>Play the bot</h3><p>Nine levels from Beginner (≈ 400) to Maximum (≈ 3200), with a safety net and live grades.</p><span class="go">Start playing ${icon('arrowRight')}</span></a>
-      <a href="#review" class="way" data-view="review"><span class="ic-wrap">${icon('clip')}</span><h3>Paste a game</h3><p>Copy the PGN from chess.com or anywhere else and get a full breakdown.</p><span class="go">Review ${icon('arrowRight')}</span></a>
-      <a href="#import" class="way" data-view="import"><span class="ic-wrap">${icon('import')}</span><h3>Import by username</h3><p>Pull your recent chess.com games and pick one to review.</p><span class="go">Import ${icon('arrowRight')}</span></a>
+      <a href="#review" class="way way-navy" data-view="review"><span class="ic-wrap">${icon('clip')}</span><h3>Paste a game</h3><p>Copy the PGN from chess.com or anywhere else and get a full breakdown.</p><span class="go">Review ${icon('arrowRight')}</span></a>
+      <a href="#import" class="way way-sand" data-view="import"><span class="ic-wrap">${icon('import')}</span><h3>Import by username</h3><p>Pull your recent chess.com games and pick one to review.</p><span class="go">Import ${icon('arrowRight')}</span></a>
     </section>
     <section class="patterns" id="patterns"></section>
     <footer class="foot"><span>Engine: Stockfish 17.1 (GPLv3), running in your browser.</span><span>Pieces: Colin M.L. Burnett (cburnett).</span><span>Elo levels are approximate.</span></footer>`;

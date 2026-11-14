@@ -1,5 +1,5 @@
 // Runs move explanations off the main thread so animations never stutter.
-import { explainMove } from './explain.js?v=f1cff92466';
+import { explainMove } from './explain.js?v=502ad4b034';
 
 self.onmessage = (e) => {
   const { id, ctx } = e.data;

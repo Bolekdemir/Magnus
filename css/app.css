@@ -825,3 +825,31 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 }
 :root[data-theme="dark"] .bg-pc { opacity: 0.12; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-pc { opacity: 0.12; } }
+
+/* =====================  hero: card back on the board, bigger board, balanced  ===================== */
+@media (min-width: 901px) {
+  .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .hero-demo { width: min(100%, 540px); justify-self: center; }
+  .hero-demo .board { max-width: none; margin: 0; }
+  .demo-card { left: -16%; bottom: -30px; width: min(340px, 68%); }
+}
+
+/* =====================  dark mode: navy in the mix  ===================== */
+:root[data-theme="dark"] .bg { background: radial-gradient(120% 90% at 100% 0%, #172238 0%, transparent 55%), radial-gradient(90% 70% at 0% 100%, #142430 0%, transparent 60%), var(--bg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg { background: radial-gradient(120% 90% at 100% 0%, #172238 0%, transparent 55%), radial-gradient(90% 70% at 0% 100%, #142430 0%, transparent 60%), var(--bg); } }
+:root[data-theme="dark"] { --glow-b: rgba(47, 76, 143, 0.30); --glow-c: rgba(235, 207, 177, 0.12); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --glow-b: rgba(47, 76, 143, 0.30); --glow-c: rgba(235, 207, 177, 0.12); } }
+/* three paths, three colors */
+:root[data-theme="dark"] .way-navy { background-color: rgba(34, 50, 86, 0.66); border-color: rgba(143, 169, 232, 0.18); }
+:root[data-theme="dark"] .way-navy .ic-wrap { background: rgba(143, 169, 232, 0.16); color: #B9CBF2; }
+:root[data-theme="dark"] .way-sand { background-color: rgba(78, 66, 50, 0.55); border-color: rgba(235, 207, 177, 0.18); }
+:root[data-theme="dark"] .way-sand .ic-wrap { background: rgba(235, 207, 177, 0.14); color: #EBCFB1; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .way-navy { background-color: rgba(34, 50, 86, 0.66); border-color: rgba(143, 169, 232, 0.18); }
+  :root:not([data-theme="light"]) .way-navy .ic-wrap { background: rgba(143, 169, 232, 0.16); color: #B9CBF2; }
+  :root:not([data-theme="light"]) .way-sand { background-color: rgba(78, 66, 50, 0.55); border-color: rgba(235, 207, 177, 0.18); }
+  :root:not([data-theme="light"]) .way-sand .ic-wrap { background: rgba(235, 207, 177, 0.14); color: #EBCFB1; }
+}
+/* navy accents in dark mode: the selected nav pill and the "your move" status */
+:root[data-theme="dark"] { --seg-pill: #2C3D63; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --seg-pill: #2C3D63; } }
