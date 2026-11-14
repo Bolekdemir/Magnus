@@ -1,23 +1,25 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=155f7bd6fe';
-import { mountReview, SAMPLE_PGN } from './review.js?v=155f7bd6fe';
-import { mountPlay } from './play.js?v=155f7bd6fe';
-import { icon } from './icons.js?v=155f7bd6fe';
-import { store } from './store.js?v=155f7bd6fe';
-import { termInfo } from './glossary.js?v=155f7bd6fe';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=155f7bd6fe';
-import { topPatterns } from './profile.js?v=155f7bd6fe';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=155f7bd6fe';
-import { engine } from './engine.js?v=155f7bd6fe';
+import { Board } from './board.js?v=382b44f93b';
+import { mountReview, SAMPLE_PGN } from './review.js?v=382b44f93b';
+import { mountPlay } from './play.js?v=382b44f93b';
+import { icon } from './icons.js?v=382b44f93b';
+import { store } from './store.js?v=382b44f93b';
+import { termInfo } from './glossary.js?v=382b44f93b';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=382b44f93b';
+import { topPatterns } from './profile.js?v=382b44f93b';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=382b44f93b';
+import { drawBackgroundPosition } from './bgposition.js?v=382b44f93b';
+import { engine } from './engine.js?v=382b44f93b';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
 
 // ---------- settings ----------
-const settings = store.get('magnus.settings', { theme: 'system', motion: 'full' });
+const settings = { theme: 'system', motion: 'full', glass: 'on', ...store.get('magnus.settings', {}) };
 function applySettings() {
   if (settings.theme === 'system') delete root.dataset.theme; else root.dataset.theme = settings.theme;
   root.dataset.motion = settings.motion;
+  root.dataset.glass = settings.glass;
   store.set('magnus.settings', settings);
   installSprings();
 }
@@ -73,6 +75,8 @@ document.querySelector('.tb-actions').innerHTML = `
       <p>Reduced keeps fades but drops movement. Your system's reduce-motion setting is respected too.</p></div>
     <div><h4>Theme</h4><div class="seg" role="group" aria-label="Theme">
       <button type="button" data-theme-opt="system">Auto</button><button type="button" data-theme-opt="light">Light</button><button type="button" data-theme-opt="dark">Dark</button></div></div>
+    <div><h4>Glass</h4><div class="seg" role="group" aria-label="Frosted glass">
+      <button type="button" data-glass-opt="on">Frosted</button><button type="button" data-glass-opt="off">Solid</button></div></div>
     <div><h4>Vibration</h4><div class="seg" role="group" aria-label="Vibration">
       <button type="button" data-hap="on">On</button><button type="button" data-hap="off">Off</button></div>
       <div class="row" style="margin-top:8px"><button type="button" class="btn btn-ghost btn-sm" id="hap-test">Test it</button></div>
@@ -81,6 +85,7 @@ document.querySelector('.tb-actions').innerHTML = `
 function paintSettings() {
   document.querySelectorAll('[data-motion]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.motion === settings.motion)));
   document.querySelectorAll('[data-theme-opt]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeOpt === settings.theme)));
+  document.querySelectorAll('[data-glass-opt]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.glassOpt === settings.glass)));
   document.querySelectorAll('[data-hap]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.hap === 'on') === hapticsEnabled())));
   const dark = settings.theme === 'dark' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.getElementById('theme-btn').innerHTML = icon(dark ? 'sun' : 'moon');
@@ -110,6 +115,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hi
 menu.addEventListener('click', (e) => {
   const m = e.target.closest('[data-motion]'); if (m) { settings.motion = m.dataset.motion; applySettings(); }
   const t = e.target.closest('[data-theme-opt]'); if (t) { settings.theme = t.dataset.themeOpt; applySettings(); }
+  const gl = e.target.closest('[data-glass-opt]'); if (gl) { settings.glass = gl.dataset.glassOpt; applySettings(); }
   const h = e.target.closest('[data-hap]'); if (h) { setHaptics(h.dataset.hap === 'on'); if (h.dataset.hap === 'on') haptic('success'); }
   if (e.target.closest('#hap-test')) { if (!hapticsEnabled()) { setHaptics(true); } haptic('success'); }
   paintSettings();
@@ -293,6 +299,7 @@ function buildImport() {
 }
 buildImport();
 
+drawBackgroundPosition(document.querySelector('.bg-pos'));
 go(location.hash.slice(1) || 'home', { push: false });
 // warm up the engine in the background so the first analysis starts instantly
 setTimeout(() => engine().ready.catch(() => {}), 600);
