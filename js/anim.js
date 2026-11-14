@@ -127,7 +127,8 @@ export function installJelly(root = document) {
     const press = wide ? '0.985 0.9' : '0.94 0.9';
     held.get(el)?.cancel();
     const a = el.animate([{ scale: '1 1' }, { scale: press }], { duration: 120, easing: EASE_OUT, fill: 'forwards' });
-    if (el.matches('.btn-primary, .btn-ghost, .ctrl')) glint(el);
+    // touch has no hover, so the glint plays on press there; with a mouse it plays on hover instead
+    if (e.pointerType !== 'mouse' && el.matches(KEYS)) glint(el);
     held.set(el, a);
     const release = () => {
       window.removeEventListener('pointerup', release);
@@ -147,7 +148,19 @@ export function installJelly(root = document) {
 }
 
 // The gloss streaks on key buttons sweep across, leave on the right and slide back in from the left.
+const KEYS = '.btn-primary, .btn-ghost, .ctrl';
+document.addEventListener('pointerover', (e) => {
+  if (e.pointerType !== 'mouse' || !canMove()) return;
+  const el = e.target.closest?.(KEYS);
+  if (!el || el.disabled || (e.relatedTarget && el.contains(e.relatedTarget))) return; // only when the pointer first enters
+  glint(el);
+}, { passive: true });
+
+const glinting = new WeakSet();
 function glint(el) {
+  if (glinting.has(el)) return; // let a running glint finish instead of restarting it
+  glinting.add(el);
+  setTimeout(() => glinting.delete(el), 820);
   const w = el.offsetWidth;
   const frames = [
     { translate: '0 0', offset: 0 },
