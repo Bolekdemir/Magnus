@@ -2,19 +2,25 @@
 // One engine, one job at a time. Jobs are queued; a cancelled job is skipped.
 
 export class Engine {
-  constructor(url = 'vendor/stockfish.js') {
-    this.url = url;
+  constructor(urls = ['vendor/stockfish.js', 'vendor/stockfish-asm.js']) {
+    this.urls = urls;
     this.queue = Promise.resolve();
     this.lineHandler = null;
     this.status = 'loading';
-    this.ready = this._boot();
+    this.ready = this._boot(urls[0]).catch((e) => {
+      if (!urls[1]) throw e;
+      try { this.worker && this.worker.terminate(); } catch { /* ignore */ }
+      this.status = 'loading';
+      return this._boot(urls[1]);
+    });
   }
 
-  _boot() {
+  _boot(url) {
+    this.url = url;
     return new Promise((resolve, reject) => {
       let worker;
       try {
-        worker = new Worker(this.url);
+        worker = new Worker(url);
       } catch (e) {
         this.status = 'error';
         reject(e);
@@ -34,6 +40,12 @@ export class Engine {
         const text = typeof e.data === 'string' ? e.data : String(e.data);
         for (const line of text.split('\n')) {
           if (!line) continue;
+          if (this.status === 'loading' && /wasm.*fail|failed to asynchronously prepare/i.test(line)) {
+            clearTimeout(timer);
+            this.status = 'error';
+            reject(new Error(line));
+            return;
+          }
           if (line === 'uciok') this._send('isready');
           else if (line === 'readyok' && this.status === 'loading') {
             clearTimeout(timer);
@@ -112,8 +124,19 @@ export class Engine {
   }
 }
 
+// Some browsers (or strict pages) block WebAssembly. Then use the slower pure-JS build.
+function wasmAllowed() {
+  try {
+    if (typeof WebAssembly !== 'object') return false;
+    const mod = new WebAssembly.Module(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0));
+    return mod instanceof WebAssembly.Module;
+  } catch {
+    return false;
+  }
+}
+
 let shared = null;
 export function engine() {
-  if (!shared) shared = new Engine();
+  if (!shared) shared = new Engine(wasmAllowed() ? ['vendor/stockfish.js', 'vendor/stockfish-asm.js'] : ['vendor/stockfish-asm.js']);
   return shared;
 }

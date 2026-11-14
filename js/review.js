@@ -231,7 +231,7 @@ export function mountReview(root) {
       : `<p class="empty-note">No mistakes from you in this game. Nicely played.</p>`;
     el.innerHTML = `<div class="acc-row"><div class="acc ${you === 'w' ? 'you' : ''}"><span>White accuracy</span><strong>${acc('w')}</strong></div><div class="acc ${you === 'b' ? 'you' : ''}"><span>Black accuracy</span><strong>${acc('b')}</strong></div></div><div class="tally">${tally}</div>${moments}`;
     staggerIn(el.children, { step: 50 });
-    el.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => goto(+b.dataset.goto)));
+    el.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => { goto(+b.dataset.goto); revealBoard(); }));
     void opp;
   }
 
@@ -340,9 +340,18 @@ export function mountReview(root) {
     board.setArrows(arrows, { animate });
   }
 
+  // On phones the card sits below the board; bring the board back into view for board actions.
+  function revealBoard() {
+    const r = $('.rv-board').getBoundingClientRect();
+    if (r.top < 70 || r.bottom > innerHeight) {
+      root.querySelector('.rv-main .board-col').scrollIntoView({ behavior: canMove() ? 'smooth' : 'auto', block: 'start' });
+    }
+  }
+
   function wireCard(el, i) {
     el.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
       const act = b.dataset.act;
+      revealBoard();
       const card = state.game.cards[i];
       if (act === 'punish') playLine(state.game.fens[i + 1], state.game.analysis[i + 1].lines[0].pv.slice(0, card.soon.steps.length), isBad(card.cls) ? 'The punishment' : 'Best play from here');
       if (act === 'better') playLine(state.game.fens[i], [card.bestUci, ...(state.game.analysis[i].lines[0].pv.slice(1, card.better.line.steps.length))], `What ${card.better.san} leads to`);

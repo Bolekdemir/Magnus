@@ -449,3 +449,6 @@ textarea:focus, input[type="text"]:focus { outline: none; border-color: var(--ac
   position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; background: var(--ink); color: var(--cream);
   padding: 10px 16px; border-radius: 12px; font-size: 14px; box-shadow: var(--shadow-lg); max-width: calc(100% - 32px);
 }
+
+.rv-main .board-col, .pl-game .board-col { scroll-margin-top: 72px; }
+.evalbar-w { box-shadow: inset 0 0 0 1px rgba(36, 48, 49, 0.08); }
