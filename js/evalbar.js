@@ -1,8 +1,8 @@
 // Paints an evaluation bar from an engine result for a position.
 // The bar reads --wp (White's share, 0..1). CSS decides if it's vertical (desktop)
 // or horizontal (phones); data-lead tells it which end the number sits on.
-import { Chess } from '../vendor/chess.js?v=fe0a9908fd';
-import { winPct, scoreToCp, fmtScore } from './explain.js?v=fe0a9908fd';
+import { Chess } from '../vendor/chess.js?v=f1cff92466';
+import { winPct, scoreToCp, fmtScore } from './explain.js?v=f1cff92466';
 
 export function paintEval(bar, fen, analysis, flipped) {
   if (!bar) return;

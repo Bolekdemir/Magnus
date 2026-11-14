@@ -801,3 +801,27 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 /* dark mode waves: one calm mint-to-forest family, no navy */
 :root[data-theme="dark"] { --wave-1: rgba(169, 215, 200, 0.05); --wave-2: rgba(118, 183, 166, 0.08); --wave-3: rgba(63, 106, 94, 0.22); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --wave-1: rgba(169, 215, 200, 0.05); --wave-2: rgba(118, 183, 166, 0.08); --wave-3: rgba(63, 106, 94, 0.22); } }
+
+/* =====================  dark mode: more color, more contrast  ===================== */
+:root[data-theme="dark"] {
+    --fg-2: #E6DFD2; --muted: #ABB6B4; --line: #33403F; --line-2: #445352;
+    --glow-a: rgba(118, 183, 166, 0.30); --glow-b: rgba(235, 207, 177, 0.17); --glow-c: rgba(169, 215, 200, 0.14);
+    --grid-c: rgba(169, 215, 200, 0.075);
+    --glass: rgba(42, 56, 57, 0.62); --glass-edge: rgba(255, 255, 255, 0.13); --glass-line: rgba(255, 255, 255, 0.11);
+    --surface-2: #26302F; --seg-bg: rgba(0, 0, 0, 0.32); --seg-pill: #435452;
+    --ks-face: #2F3D3F; --ks-rim: #415252; --ks-lip: #0B1112; --ks-gloss: rgba(255, 255, 255, 0.08);
+    --wave-1: rgba(235, 207, 177, 0.10); --wave-2: rgba(118, 183, 166, 0.13); --wave-3: rgba(63, 106, 94, 0.32);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fg-2: #E6DFD2; --muted: #ABB6B4; --line: #33403F; --line-2: #445352;
+    --glow-a: rgba(118, 183, 166, 0.30); --glow-b: rgba(235, 207, 177, 0.17); --glow-c: rgba(169, 215, 200, 0.14);
+    --grid-c: rgba(169, 215, 200, 0.075);
+    --glass: rgba(42, 56, 57, 0.62); --glass-edge: rgba(255, 255, 255, 0.13); --glass-line: rgba(255, 255, 255, 0.11);
+    --surface-2: #26302F; --seg-bg: rgba(0, 0, 0, 0.32); --seg-pill: #435452;
+    --ks-face: #2F3D3F; --ks-rim: #415252; --ks-lip: #0B1112; --ks-gloss: rgba(255, 255, 255, 0.08);
+    --wave-1: rgba(235, 207, 177, 0.10); --wave-2: rgba(118, 183, 166, 0.13); --wave-3: rgba(63, 106, 94, 0.32);
+  }
+}
+:root[data-theme="dark"] .bg-pc { opacity: 0.12; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-pc { opacity: 0.12; } }

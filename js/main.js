@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=fe0a9908fd';
-import { mountReview, SAMPLE_PGN } from './review.js?v=fe0a9908fd';
-import { mountPlay } from './play.js?v=fe0a9908fd';
-import { icon } from './icons.js?v=fe0a9908fd';
-import { store } from './store.js?v=fe0a9908fd';
-import { termInfo } from './glossary.js?v=fe0a9908fd';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=fe0a9908fd';
-import { topPatterns } from './profile.js?v=fe0a9908fd';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=fe0a9908fd';
-import { drawBackgroundPosition } from './bgposition.js?v=fe0a9908fd';
-import { engine } from './engine.js?v=fe0a9908fd';
+import { Board } from './board.js?v=f1cff92466';
+import { mountReview, SAMPLE_PGN } from './review.js?v=f1cff92466';
+import { mountPlay } from './play.js?v=f1cff92466';
+import { icon } from './icons.js?v=f1cff92466';
+import { store } from './store.js?v=f1cff92466';
+import { termInfo } from './glossary.js?v=f1cff92466';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=f1cff92466';
+import { topPatterns } from './profile.js?v=f1cff92466';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=f1cff92466';
+import { drawBackgroundPosition } from './bgposition.js?v=f1cff92466';
+import { engine } from './engine.js?v=f1cff92466';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
