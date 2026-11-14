@@ -755,3 +755,7 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 .g-w { background: #F7F1E4; } .g-b { background: #243031; }
 /* the result popup sits on a fading backdrop; a solid card avoids the glass re-blurring when the fade ends */
 .overlay .result.panel { background-color: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* play: look-back banner + compact control labels on phones */
+.pl-banner:empty { display: none; }
+@media (max-width: 640px) { .ctrls .lbl { display: none; } .board-col > .pl-banner { padding-inline: max(16px, env(safe-area-inset-left, 0px)); } }

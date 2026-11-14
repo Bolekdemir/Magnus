@@ -1,18 +1,18 @@
 // Play against Stockfish at a chosen strength, with optional coaching.
-import { Chess } from '../vendor/chess.js?v=c722a7f77b';
-import { Board } from './board.js?v=c722a7f77b';
-import { engine } from './engine.js?v=c722a7f77b';
-import { scoreToCp, isBad, moveFacts, TONE, winPct, assess } from './explain.js?v=c722a7f77b';
-import { explainAsync } from './explainer.js?v=c722a7f77b';
-import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=c722a7f77b';
-import { renderCard, badge } from './card.js?v=c722a7f77b';
-import { renderText } from './glossary.js?v=c722a7f77b';
-import { icon } from './icons.js?v=c722a7f77b';
-import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=c722a7f77b';
-import { store } from './store.js?v=c722a7f77b';
-import { haptic } from './haptics.js?v=c722a7f77b';
-import { topPatterns } from './profile.js?v=c722a7f77b';
-import { paintEval, resetEval } from './evalbar.js?v=c722a7f77b';
+import { Chess } from '../vendor/chess.js?v=578809bc23';
+import { Board } from './board.js?v=578809bc23';
+import { engine } from './engine.js?v=578809bc23';
+import { scoreToCp, isBad, moveFacts, TONE, winPct, assess } from './explain.js?v=578809bc23';
+import { explainAsync } from './explainer.js?v=578809bc23';
+import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=578809bc23';
+import { renderCard, badge } from './card.js?v=578809bc23';
+import { renderText } from './glossary.js?v=578809bc23';
+import { icon } from './icons.js?v=578809bc23';
+import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=578809bc23';
+import { store } from './store.js?v=578809bc23';
+import { haptic } from './haptics.js?v=578809bc23';
+import { topPatterns } from './profile.js?v=578809bc23';
+import { paintEval, resetEval } from './evalbar.js?v=578809bc23';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional
@@ -62,11 +62,14 @@ export function mountPlay(root, { onReview }) {
       <div class="player" data-p="top"></div>
       <div class="board-frame"><div class="evalbar" aria-hidden="true"><div class="evalbar-w"></div><span class="evalbar-n"></span></div><div class="pl-board"></div></div>
       <div class="player" data-p="bottom"></div>
+      <div class="pl-banner"></div>
       <div class="ctrls">
-        <button class="ctrl" id="pl-hint">${icon('hint')}Hint</button>
-        <button class="ctrl" id="pl-undo">${icon('undo')}Undo</button>
+        <button class="ctrl" id="pl-back" aria-label="Previous position (doesn't undo)">${icon('prev')}</button>
+        <button class="ctrl" id="pl-fwd" aria-label="Next position">${icon('next')}</button>
+        <button class="ctrl" id="pl-hint" aria-label="Hint">${icon('hint')}<span class="lbl">Hint</span></button>
+        <button class="ctrl" id="pl-undo" aria-label="Undo">${icon('undo')}<span class="lbl">Undo</span></button>
         <button class="ctrl" id="pl-flip" aria-label="Flip board">${icon('flip')}</button>
-        <button class="ctrl" id="pl-resign">${icon('flag')}Resign</button>
+        <button class="ctrl" id="pl-resign" aria-label="Resign">${icon('flag')}<span class="lbl">Resign</span></button>
       </div>
     </div>
     <aside class="side">
@@ -123,6 +126,9 @@ export function mountPlay(root, { onReview }) {
     st.grades_ = [];
     st.over = false;
     st.lastWp = null;
+    st.view = null;
+    st.live = null;
+    $('.pl-banner').innerHTML = '';
     $('.pl-setup').hidden = true;
     $('.pl-game').hidden = false;
     board.setOrientation(st.user);
@@ -236,11 +242,12 @@ export function mountPlay(root, { onReview }) {
       if (st.pendingBot) gradeBot(st.pendingBot, a);
       st.pendingBot = null;
     });
-    board.setInteractive({
+    st.live = {
       color: st.user,
       dests: (sq) => st.chess.moves({ square: sq, verbose: true }).map((m) => m.to),
       onMove: (from, to) => onUserMove(from, to),
-    });
+    };
+    if (st.view == null) board.setInteractive(st.live);
     $('#pl-hint').disabled = false;
     $('#pl-undo').disabled = st.chess.history().length < 2;
   }
@@ -404,6 +411,8 @@ export function mountPlay(root, { onReview }) {
     if (token.cancelled || st.over) return;
     let m;
     try { m = st.chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined }); } catch { return; }
+    if (st.view != null) leaveView(false);
+    st.live = null;
     board.setPosition(st.chess.fen(), { animate: true });
     board.setMarks({ last: [m.from, m.to], good: null, bad: null });
     board.clearBadge();
@@ -439,8 +448,66 @@ export function mountPlay(root, { onReview }) {
     return lines[0].pv[0];
   }
 
+  // ----- look back: browse earlier positions without taking anything back -----
+  function viewAt(n) {
+    if (!st.chess) return;
+    const hist = st.chess.history({ verbose: true });
+    n = Math.max(0, Math.min(hist.length, n));
+    if (n === hist.length) { if (st.view != null) leaveView(true); return; }
+    st.view = n;
+    const c = new Chess();
+    for (const mv of hist.slice(0, n)) c.move(mv.san);
+    board.setInteractive(null);
+    board.setArrows([]);
+    board.setPosition(c.fen(), { animate: true });
+    const last = hist[n - 1];
+    board.setMarks({ last: last ? [last.from, last.to] : null, good: null, bad: null });
+    const g = st.grades_?.[n - 1];
+    if (g && last) board.setBadge(last.to, g.cls, { delay: 120 }); else board.clearBadge();
+    paintView(hist);
+  }
+  function paintView(hist) {
+    const el = $('.pl-banner');
+    const n = st.view;
+    const total = hist.length;
+    const at = n === 0 ? 'the starting position' : `after <b>${Math.ceil(n / 2)}.${n % 2 ? '' : '..'} ${esc(hist[n - 1].san)}</b>`;
+    el.innerHTML = `<div class="banner">${icon('eye')}<span>Looking back: ${at} <span style="opacity:.7">(${n}/${total})</span></span><button type="button" class="btn btn-ghost btn-sm" data-live>Back to live</button></div>`;
+    el.querySelector('[data-live]').addEventListener('click', () => leaveView(true));
+    root.querySelectorAll('#pl-moves .mv').forEach((b) => b.toggleAttribute('aria-current', +b.dataset.ply === n - 1));
+    root.querySelectorAll('#pl-moves .mv[aria-current]').forEach((b) => b.setAttribute('aria-current', 'true'));
+    $('#pl-back').disabled = n === 0;
+    $('#pl-fwd').disabled = false;
+  }
+  function leaveView(animate) {
+    st.view = null;
+    $('.pl-banner').innerHTML = '';
+    const hist = st.chess.history({ verbose: true });
+    const last = hist[hist.length - 1];
+    board.setPosition(st.chess.fen(), { animate });
+    board.setMarks({ last: last ? [last.from, last.to] : null, good: null, bad: null });
+    const g = st.grades_?.[hist.length - 1];
+    if (g && last && st.grades) board.setBadge(last.to, g.cls, { animate: false }); else board.clearBadge();
+    if (st.live && !st.over && st.chess.turn() === st.user) board.setInteractive(st.live);
+    syncBrowse();
+    renderMoves();
+  }
+  function syncBrowse() {
+    const len = st.chess ? st.chess.history().length : 0;
+    $('#pl-back').disabled = len === 0 || st.view === 0;
+    $('#pl-fwd').disabled = st.view == null;
+  }
+  $('#pl-back').addEventListener('click', () => viewAt((st.view ?? st.chess.history().length) - 1));
+  $('#pl-fwd').addEventListener('click', () => { if (st.view != null) viewAt(st.view + 1); });
+  window.addEventListener('keydown', (e) => {
+    if (root.hidden || $('.pl-game').hidden || !st.chess || e.target.closest('input, textarea')) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); $('#pl-back').click(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); $('#pl-fwd').click(); }
+    else if (e.key === 'Escape' && st.view != null) leaveView(true);
+  });
+
   // ----- hint -----
   $('#pl-hint').addEventListener('click', async () => {
+    if (st.view != null) leaveView(true);
     if (st.chess.turn() !== st.user || st.over) return;
     const a = await st.turnAnalysis;
     if (!a?.lines?.[0]) return;
@@ -460,6 +527,7 @@ export function mountPlay(root, { onReview }) {
 
   // ----- take back -----
   $('#pl-undo').addEventListener('click', () => {
+    if (st.view != null) leaveView(false);
     if (st.over || st.chess.turn() !== st.user || st.chess.history().length < 2) return;
     cancelAll();
     st.chess.undo(); st.chess.undo();
@@ -492,9 +560,11 @@ export function mountPlay(root, { onReview }) {
     const el = $('#pl-moves');
     el.innerHTML = html || '<p class="empty-note" style="grid-column:1/-1;padding:8px">Moves will appear here.</p>';
     st.grades_?.forEach((c, i) => c && paintGrade(i, c));
-    el.scrollTop = el.scrollHeight;
+    if (st.view == null) el.scrollTop = el.scrollHeight;
     refreshLeft();
+    syncBrowse();
     el.querySelectorAll('.mv').forEach((b) => b.addEventListener('click', () => {
+      viewAt(+b.dataset.ply + 1);
       const c = st.grades_?.[+b.dataset.ply];
       if (c) coach(`<div class="card">${renderCard(c, { actions: {} })}</div>`);
     }));
