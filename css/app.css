@@ -687,3 +687,9 @@ html { background: var(--bg); }
 .bg-pc { position: absolute; width: 36px; height: 36px; background-size: contain; background-repeat: no-repeat; opacity: 0.13; }
 :root[data-theme="dark"] .bg-pc { filter: invert(1); opacity: 0.1; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-pc { filter: invert(1); opacity: 0.1; } }
+
+/* the background grid takes its square size and origin from the background position */
+.bg-grid { background-size: calc(var(--sq, 36px) * 2) calc(var(--sq, 36px) * 2); background-position: var(--gx, 0) var(--gy, 0); }
+.bg-pc { width: var(--sq, 36px); height: var(--sq, 36px); opacity: 0.1; }
+:root[data-theme="dark"] .bg-pc { opacity: 0.085; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-pc { opacity: 0.085; } }
