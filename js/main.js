@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=ad9937f2d8';
-import { mountReview, SAMPLE_PGN } from './review.js?v=ad9937f2d8';
-import { mountPlay } from './play.js?v=ad9937f2d8';
-import { icon } from './icons.js?v=ad9937f2d8';
-import { store } from './store.js?v=ad9937f2d8';
-import { termInfo } from './glossary.js?v=ad9937f2d8';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=ad9937f2d8';
-import { topPatterns } from './profile.js?v=ad9937f2d8';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=ad9937f2d8';
-import { drawBackgroundPosition } from './bgposition.js?v=ad9937f2d8';
-import { engine } from './engine.js?v=ad9937f2d8';
+import { Board } from './board.js?v=456d8a0947';
+import { mountReview, SAMPLE_PGN } from './review.js?v=456d8a0947';
+import { mountPlay } from './play.js?v=456d8a0947';
+import { icon } from './icons.js?v=456d8a0947';
+import { store } from './store.js?v=456d8a0947';
+import { termInfo } from './glossary.js?v=456d8a0947';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=456d8a0947';
+import { topPatterns } from './profile.js?v=456d8a0947';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=456d8a0947';
+import { drawBackgroundPosition } from './bgposition.js?v=456d8a0947';
+import { engine } from './engine.js?v=456d8a0947';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -254,6 +254,32 @@ function setupStableHeights() {
   phone.addEventListener?.('change', reset);
 }
 
+// PC: the board column is pinned exactly where it starts, and sized so it always fits under the header,
+// otherwise it has to slide a little for you to reach its bottom edge.
+function setupPinnedBoard() {
+  const desk = matchMedia('(min-width: 901px)');
+  for (const col of document.querySelectorAll('.split3 > .board-col')) {
+    let busy = false, pin = 0;
+    const fit = (fresh) => {
+      if (busy) return;
+      if (!desk.matches) { col.style.maxWidth = ''; col.style.removeProperty('--pin-top'); return; }
+      if (!col.offsetParent) return;
+      busy = true;
+      if (fresh) col.style.maxWidth = '';                 // re-measure from the CSS size after a resize
+      const r = col.getBoundingClientRect();
+      // where the column naturally sits; only measurable while the page is at the top (not yet pinned)
+      if (scrollY < 1 || !pin) pin = Math.round(r.top + scrollY);
+      col.style.setProperty('--pin-top', pin + 'px');
+      const over = Math.ceil(pin + r.height + 4 - innerHeight);
+      if (over > 0) col.style.maxWidth = Math.max(320, Math.floor(r.width - over)) + 'px';
+      requestAnimationFrame(() => { busy = false; });
+    };
+    new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) fit(true); }).observe(col);
+    addEventListener('resize', () => requestAnimationFrame(() => fit(true)));
+    if ('ResizeObserver' in window) new ResizeObserver(() => requestAnimationFrame(() => fit(false))).observe(col);
+  }
+}
+
 // Fallback for browsers without scroll-linked animations: each card below the board settles in once.
 function setupCardRise(split, boardCol) {
   const io = new IntersectionObserver((entries) => {
@@ -458,6 +484,7 @@ drawBackgroundPosition(document.querySelector('.bg-pos'));
 setupScrollHints();
 setupMoveStrips();
 setupStableHeights();
+setupPinnedBoard();
 go(location.hash.slice(1) || 'home', { push: false });
 // warm up the engine in the background so the first analysis starts instantly
 setTimeout(() => engine().ready.catch(() => {}), 600);

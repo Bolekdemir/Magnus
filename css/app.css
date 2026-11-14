@@ -1105,7 +1105,7 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 
 /* =====================  PC: board and left column stay put, only the right column scrolls  ===================== */
 @media (min-width: 901px) {
-  .split3 > .board-col { position: sticky; top: 84px; align-self: start; }
+  .split3 > .board-col { position: sticky; top: var(--pin-top, 85px); align-self: start; }
   /* room at the end so the pinned board never gets pushed up when you reach the bottom */
   .split3 > .side { padding-bottom: 96px; }
   /* the right column brings its own end spacing; page padding under a full-height board only adds a pointless scroll */
