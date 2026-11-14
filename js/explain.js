@@ -3,7 +3,7 @@
 import {
   Chess, VAL, NAME, other, seeOn, loosePieces, threatsBy, forkFrom, lineTacticFrom,
   discoveredAfter, features, playUci, balance, moveUci, uciToSan, attacksFrom,
-} from './chessutil.js?v=713fc9da38';
+} from './chessutil.js?v=155f7bd6fe';
 
 // ---------- scores ----------
 export function scoreToCp(s) {
