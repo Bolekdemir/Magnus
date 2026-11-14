@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=5191e09630';
-import { mountReview, SAMPLE_PGN } from './review.js?v=5191e09630';
-import { mountPlay } from './play.js?v=5191e09630';
-import { icon } from './icons.js?v=5191e09630';
-import { store } from './store.js?v=5191e09630';
-import { termInfo } from './glossary.js?v=5191e09630';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=5191e09630';
-import { topPatterns } from './profile.js?v=5191e09630';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=5191e09630';
-import { drawBackgroundPosition } from './bgposition.js?v=5191e09630';
-import { engine } from './engine.js?v=5191e09630';
+import { Board } from './board.js?v=a627bf260a';
+import { mountReview, SAMPLE_PGN } from './review.js?v=a627bf260a';
+import { mountPlay } from './play.js?v=a627bf260a';
+import { icon } from './icons.js?v=a627bf260a';
+import { store } from './store.js?v=a627bf260a';
+import { termInfo } from './glossary.js?v=a627bf260a';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=a627bf260a';
+import { topPatterns } from './profile.js?v=a627bf260a';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=a627bf260a';
+import { drawBackgroundPosition } from './bgposition.js?v=a627bf260a';
+import { engine } from './engine.js?v=a627bf260a';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -233,6 +233,27 @@ function setupMoveStrips() {
   }
 }
 
+// Phones: the side columns may grow during a game but never shrink until a new game starts.
+// iOS Safari has no scroll anchoring, so a card shrinking (e.g. "Checking your move…") made the page jump.
+function setupStableHeights() {
+  const phone = matchMedia('(max-width: 640px)');
+  const cols = [...document.querySelectorAll('.split3 > aside')];
+  const max = new Map();
+  const reset = () => cols.forEach((c) => { max.delete(c); c.style.minHeight = ''; });
+  if (!('ResizeObserver' in window)) return;
+  const ro = new ResizeObserver((entries) => {
+    if (!phone.matches) return;
+    for (const e of entries) {
+      const el = e.target, h = el.getBoundingClientRect().height;
+      if (!h) continue; // hidden view
+      if (h > (max.get(el) || 0)) { max.set(el, h); el.style.minHeight = h + 'px'; }
+    }
+  });
+  cols.forEach((c) => ro.observe(c));
+  document.addEventListener('click', (e) => { if (e.target.closest('#pl-start, #pl-new, #pgn-go, #rv-new, .nav a, [data-rv]')) reset(); }, true);
+  phone.addEventListener?.('change', reset);
+}
+
 // Fallback for browsers without scroll-linked animations: each card below the board settles in once.
 function setupCardRise(split, boardCol) {
   const io = new IntersectionObserver((entries) => {
@@ -436,6 +457,7 @@ buildImport();
 drawBackgroundPosition(document.querySelector('.bg-pos'));
 setupScrollHints();
 setupMoveStrips();
+setupStableHeights();
 go(location.hash.slice(1) || 'home', { push: false });
 // warm up the engine in the background so the first analysis starts instantly
 setTimeout(() => engine().ready.catch(() => {}), 600);
