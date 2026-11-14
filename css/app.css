@@ -831,7 +831,10 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
   .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .hero-demo { width: min(100%, 540px); justify-self: center; }
   .hero-demo .board { max-width: none; margin: 0; }
-  .demo-card { left: -20%; bottom: -10px; width: min(370px, 74%); }
+  .demo-card { left: -30%; bottom: 34px; width: min(436px, 86%); }
+  .demo-card .card { font-size: 1.08em; }
+  .demo-card .card-move { font-size: 25px; }
+  .demo-card .sec li { font-size: 15.5px; }
 }
 
 /* =====================  dark mode: navy in the mix  ===================== */
@@ -853,3 +856,4 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 /* navy accents in dark mode: the selected nav pill and the "your move" status */
 :root[data-theme="dark"] { --seg-pill: #2C3D63; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --seg-pill: #2C3D63; } }
+@media (min-width: 901px) and (max-width: 1500px) { .demo-card { left: -20%; } }
