@@ -1,7 +1,7 @@
 // Chessboard view: animated pieces, drag + click moves, arrows, square marks.
-import { Chess } from '../vendor/chess.js?v=80ad34febe';
-import { spring, canMove, canFade, EASE_OUT, squash } from './anim.js?v=80ad34febe';
-import { icon } from './icons.js?v=80ad34febe';
+import { Chess } from '../vendor/chess.js?v=713fc9da38';
+import { spring, canMove, canFade, EASE_OUT } from './anim.js?v=713fc9da38';
+import { icon } from './icons.js?v=713fc9da38';
 
 // Move-quality badge glyphs and tones (shown on the destination square).
 export const BADGE = {
@@ -125,12 +125,10 @@ export class Board {
         p.sq = n.sq;
         if (anim) {
           p.el.style.zIndex = 3;
-          const target = n.sq;
           const done = (ev) => {
             if (ev.propertyName !== 'translate') return;
             p.el.removeEventListener('transitionend', done);
             p.el.style.zIndex = '';
-            if (p.sq === target) squash(p.el, { amount: 0.06 });
           };
           p.el.addEventListener('transitionend', done);
         } else this._noAnim(p.el);
@@ -321,7 +319,6 @@ export class Board {
         this._noAnim(el);
         this._place(el, to);
         piece.sq = to; // provisional: the next setPosition confirms it
-        squash(el, { amount: 0.08 });
         this._deselect();
         this.interactive.onMove(from, to);
       } else {

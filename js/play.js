@@ -1,17 +1,17 @@
 // Play against Stockfish at a chosen strength, with optional coaching.
-import { Chess } from '../vendor/chess.js?v=80ad34febe';
-import { Board } from './board.js?v=80ad34febe';
-import { engine } from './engine.js?v=80ad34febe';
-import { scoreToCp, isBad, moveFacts, TONE, winPct } from './explain.js?v=80ad34febe';
-import { explainAsync } from './explainer.js?v=80ad34febe';
-import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=80ad34febe';
-import { renderCard, badge } from './card.js?v=80ad34febe';
-import { renderText } from './glossary.js?v=80ad34febe';
-import { icon } from './icons.js?v=80ad34febe';
-import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=80ad34febe';
-import { store } from './store.js?v=80ad34febe';
-import { haptic } from './haptics.js?v=80ad34febe';
-import { paintEval, resetEval } from './evalbar.js?v=80ad34febe';
+import { Chess } from '../vendor/chess.js?v=713fc9da38';
+import { Board } from './board.js?v=713fc9da38';
+import { engine } from './engine.js?v=713fc9da38';
+import { scoreToCp, isBad, moveFacts, TONE, winPct } from './explain.js?v=713fc9da38';
+import { explainAsync } from './explainer.js?v=713fc9da38';
+import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=713fc9da38';
+import { renderCard, badge } from './card.js?v=713fc9da38';
+import { renderText } from './glossary.js?v=713fc9da38';
+import { icon } from './icons.js?v=713fc9da38';
+import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=713fc9da38';
+import { store } from './store.js?v=713fc9da38';
+import { haptic } from './haptics.js?v=713fc9da38';
+import { paintEval, resetEval } from './evalbar.js?v=713fc9da38';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional

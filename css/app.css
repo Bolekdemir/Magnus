@@ -210,7 +210,7 @@ main { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-
 .b-pcs { position: absolute; inset: 0; pointer-events: none; }
 .pc {
   position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; background-size: 100% 100%; background-repeat: no-repeat;
-  transition: translate var(--sp-piece-d, 190ms) var(--sp-piece, var(--ease-out)), scale var(--sp-d, 260ms) var(--sp, var(--ease-out)), opacity 180ms ease;
+  transition: translate var(--sp-piece-d, 190ms) var(--sp-piece, var(--ease-out)), scale 180ms var(--ease-out), opacity 180ms ease;
   will-change: translate;
 }
 :root[data-motion="off"] .pc, :root[data-motion="reduced"] .pc { transition-duration: 0ms, 0ms, 180ms; }
@@ -218,7 +218,7 @@ main { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-
 .pc-lift { scale: 1.07; z-index: 2; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.18)); }
 .pc-still { transition: none !important; }
 .pc-out { opacity: 0; scale: 0.82; }
-.pc-drag { transition: scale var(--sp-d, 260ms) var(--sp, ease); scale: 1.14; z-index: 5; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.28)); cursor: grabbing; }
+.pc-drag { transition: scale 160ms var(--ease-out); scale: 1.14; z-index: 5; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.28)); cursor: grabbing; }
 .board.is-live { cursor: pointer; }
 .b-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
 .arrow line { stroke-width: 15; stroke-linecap: round; }
