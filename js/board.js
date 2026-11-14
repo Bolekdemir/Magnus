@@ -1,7 +1,7 @@
 // Chessboard view: animated pieces, drag + click moves, arrows, square marks.
-import { Chess } from '../vendor/chess.js';
-import { spring, canMove, canFade, EASE_OUT, squash } from './anim.js';
-import { icon } from './icons.js';
+import { Chess } from '../vendor/chess.js?v=80ad34febe';
+import { spring, canMove, canFade, EASE_OUT, squash } from './anim.js?v=80ad34febe';
+import { icon } from './icons.js?v=80ad34febe';
 
 // Move-quality badge glyphs and tones (shown on the destination square).
 export const BADGE = {

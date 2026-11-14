@@ -1,12 +1,14 @@
 // Short, subtle vibration for moves.
-// Android browsers support navigator.vibrate. iPhone Safari does not; on iOS 18+
-// toggling a native switch control gives a light system tap, which only works
-// while handling the user's own touch, so opponent moves stay silent there.
-import { store } from './store.js';
+//
+// Android: navigator.vibrate works.
+// iPhone: Safari has no vibration API, but since iOS 18 toggling a native switch
+// control (<input type="checkbox" switch>) plays the system's light haptic tap.
+// iOS only allows it while handling a real gesture, and finger-down doesn't count,
+// so a haptic asked for during finger-down is held until the finger lifts.
+import { store } from './store.js?v=80ad34febe';
 
 const KEY = 'magnus.haptics';
 let enabled = store.get(KEY, true);
-let iosSwitch = null;
 
 export const hapticsEnabled = () => enabled;
 export function setHaptics(on) {
@@ -14,20 +16,42 @@ export function setHaptics(on) {
   store.set(KEY, on);
 }
 
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1);
+
 function iosTap() {
-  if (!iosSwitch) {
-    const label = document.createElement('label');
-    label.setAttribute('aria-hidden', 'true');
-    label.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;left:-10px;top:-10px';
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.setAttribute('switch', '');
-    input.tabIndex = -1;
-    label.appendChild(input);
-    document.body.appendChild(label);
-    iosSwitch = label;
-  }
-  iosSwitch.click();
+  const label = document.createElement('label');
+  label.setAttribute('aria-hidden', 'true');
+  label.style.display = 'none';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.setAttribute('switch', '');
+  label.appendChild(input);
+  document.head.appendChild(label);
+  label.click();
+  label.remove();
+}
+
+// Are we inside a finger-down handler right now?
+let inPointerDown = false;
+let pending = null;
+document.addEventListener('pointerdown', () => {
+  inPointerDown = true;
+  setTimeout(() => { inPointerDown = false; }, 0);
+}, { capture: true, passive: true });
+const flush = () => {
+  if (!pending) return;
+  const p = pending;
+  pending = null;
+  if (performance.now() - p.at < 1200) fireIOS(p.taps);
+};
+const lift = () => { inPointerDown = false; flush(); };
+document.addEventListener('pointerup', lift, { capture: true, passive: true });
+document.addEventListener('touchend', lift, { capture: true, passive: true });
+document.addEventListener('click', flush, { capture: true, passive: true });
+
+function fireIOS(taps) {
+  try { iosTap(); } catch { /* not supported */ }
+  if (taps > 1) setTimeout(() => { try { iosTap(); } catch { /* ignore */ } }, 90);
 }
 
 // kind: 'move' (yours), 'opponent', 'capture', 'success', 'error'
@@ -42,7 +66,8 @@ export function haptic(kind = 'move') {
   } catch {
     /* blocked by the browser */
   }
-  if (kind !== 'opponent') {
-    try { iosTap(); } catch { /* not supported */ }
-  }
+  if (!isIOS) return;
+  const taps = kind === 'success' || kind === 'error' ? 2 : 1;
+  if (inPointerDown) pending = { taps, at: performance.now() };
+  else fireIOS(taps); // opponent moves have no gesture behind them, so iOS may stay silent
 }

@@ -1,14 +1,14 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js';
-import { mountReview, SAMPLE_PGN } from './review.js';
-import { mountPlay } from './play.js';
-import { icon } from './icons.js';
-import { store } from './store.js';
-import { termInfo } from './glossary.js';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js';
-import { topPatterns } from './profile.js';
-import { hapticsEnabled, setHaptics } from './haptics.js';
-import { engine } from './engine.js';
+import { Board } from './board.js?v=80ad34febe';
+import { mountReview, SAMPLE_PGN } from './review.js?v=80ad34febe';
+import { mountPlay } from './play.js?v=80ad34febe';
+import { icon } from './icons.js?v=80ad34febe';
+import { store } from './store.js?v=80ad34febe';
+import { termInfo } from './glossary.js?v=80ad34febe';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=80ad34febe';
+import { topPatterns } from './profile.js?v=80ad34febe';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=80ad34febe';
+import { engine } from './engine.js?v=80ad34febe';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -75,7 +75,8 @@ document.querySelector('.tb-actions').innerHTML = `
       <button type="button" data-theme-opt="system">Auto</button><button type="button" data-theme-opt="light">Light</button><button type="button" data-theme-opt="dark">Dark</button></div></div>
     <div><h4>Vibration</h4><div class="seg" role="group" aria-label="Vibration">
       <button type="button" data-hap="on">On</button><button type="button" data-hap="off">Off</button></div>
-      <p>A short buzz on each move. Works on Android. iPhones only allow a light tap for your own moves (iOS 18+).</p></div>
+      <div class="row" style="margin-top:8px"><button type="button" class="btn btn-ghost btn-sm" id="hap-test">Test it</button></div>
+      <p>A short buzz on each move. Android vibrates; iPhones (iOS 18+) give a light tap on your own moves.</p></div>
   </div>`;
 function paintSettings() {
   document.querySelectorAll('[data-motion]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.motion === settings.motion)));
@@ -104,12 +105,13 @@ function toggleMenu(open = menu.hidden) {
   }
 }
 setBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
-document.addEventListener('click', (e) => { if (!menu.hidden && !e.target.closest('#set-menu')) toggleMenu(false); });
+document.addEventListener('click', (e) => { if (!e.isTrusted) return; if (!menu.hidden && !e.target.closest('#set-menu')) toggleMenu(false); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) toggleMenu(false); });
 menu.addEventListener('click', (e) => {
   const m = e.target.closest('[data-motion]'); if (m) { settings.motion = m.dataset.motion; applySettings(); }
   const t = e.target.closest('[data-theme-opt]'); if (t) { settings.theme = t.dataset.themeOpt; applySettings(); }
-  const h = e.target.closest('[data-hap]'); if (h) setHaptics(h.dataset.hap === 'on');
+  const h = e.target.closest('[data-hap]'); if (h) { setHaptics(h.dataset.hap === 'on'); if (h.dataset.hap === 'on') haptic('success'); }
+  if (e.target.closest('#hap-test')) { if (!hapticsEnabled()) { setHaptics(true); } haptic('success'); }
   paintSettings();
 });
 
@@ -117,6 +119,7 @@ menu.addEventListener('click', (e) => {
 let tipEl = null;
 function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } }
 document.addEventListener('click', (e) => {
+  if (!e.isTrusted) return; // ignore the hidden switch the haptics use on iPhone
   const t = e.target.closest('.term');
   if (!t) { hideTip(); return; }
   e.preventDefault();
