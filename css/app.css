@@ -955,3 +955,41 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 /* light mode: the original green for "why" in the headline */
 :root:not([data-theme="dark"]) .hero h1 em { color: #3F6A5E; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero h1 em { color: var(--accent); } }
+
+/* =====================  no background pieces next to a real board  ===================== */
+:root[data-view="play"] .bg-pos, :root[data-view="review"] .bg-pos { display: none; }
+
+/* =====================  PC: controls sit on the same row as the bottom player  ===================== */
+@media (min-width: 1440px) {
+  .split3 > .board-col { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; max-width: min(1000px, calc(100dvh - 156px)); }
+  .split3 > .board-col > * { grid-column: 1 / -1; }
+  .split3 > .board-col > [data-p="top"] { grid-row: 1; }
+  .split3 > .board-col > .board-frame { grid-row: 2; }
+  .split3 > .board-col > [data-p="bottom"] { grid-row: 3; grid-column: 1; }
+  .split3 > .board-col > .ctrls { grid-row: 3; grid-column: 2; justify-content: flex-end; flex-wrap: nowrap; }
+  .split3 > .board-col > .rv-banner, .split3 > .board-col > .pl-banner { grid-row: 4; }
+}
+.scroll-hint { display: none; }
+
+/* =====================  phones  ===================== */
+@media (max-width: 640px) {
+  /* the player rows ("Magnus bot · Novice · ≈700", "You") sit on their own glass strip, not straight on the background */
+  .split3 > .board-col > .player { padding: 6px 12px; border-radius: 14px; border: 1px solid var(--glass-line);
+    background: var(--glass); box-shadow: inset 0 1px 0 var(--glass-edge);
+    backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); }
+  /* the board area fills the first screen; the explanation waits below the fold */
+  .split3 > .board-col { display: flex; flex-direction: column; gap: 5px;
+    min-height: calc(100svh - 60px - env(safe-area-inset-top, 0px) - 12px); }
+  /* floating pill pinned to the bottom edge until the explanation scrolls in */
+  .scroll-hint { display: inline-flex; position: fixed; z-index: 30; left: 0; right: 0; margin-inline: auto; width: max-content;
+    bottom: calc(6px + env(safe-area-inset-bottom, 0px)); align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px; border: 1px solid var(--glass-line); background: var(--glass); color: var(--fg-2);
+    font-size: 12px; font-weight: 600; line-height: 16px; cursor: pointer; box-shadow: inset 0 1px 0 var(--glass-edge), var(--shadow);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    transition: opacity 260ms var(--ease-out), translate 260ms var(--ease-out); }
+  .scroll-hint .ic { width: 14px; height: 14px; animation: hint-nudge 1.1s var(--ease-in-out) 0.8s 3; }
+  .scroll-hint.is-gone { opacity: 0; translate: 0 8px; pointer-events: none; }
+}
+@keyframes hint-nudge { 0%, 100% { translate: 0 0; } 45% { translate: 0 5px; } }
+:root[data-motion="off"] .scroll-hint .ic, :root[data-motion="reduced"] .scroll-hint .ic { animation: none; }
+@media (prefers-reduced-motion: reduce) { .scroll-hint .ic { animation: none; } }

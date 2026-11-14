@@ -1,17 +1,17 @@
 // Game review: analyse every position, explain every move, replay lines, retry mistakes.
-import { Chess } from '../vendor/chess.js?v=4f7770ea26';
-import { Board } from './board.js?v=4f7770ea26';
-import { engine } from './engine.js?v=4f7770ea26';
-import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE, forOpponent } from './explain.js?v=4f7770ea26';
-import { explainAsync } from './explainer.js?v=4f7770ea26';
-import { renderCard, badge, steps } from './card.js?v=4f7770ea26';
-import { icon } from './icons.js?v=4f7770ea26';
-import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js?v=4f7770ea26';
-import { store } from './store.js?v=4f7770ea26';
-import { renderText } from './glossary.js?v=4f7770ea26';
-import { haptic } from './haptics.js?v=4f7770ea26';
-import { recordGame, topPatterns } from './profile.js?v=4f7770ea26';
-import { paintEval } from './evalbar.js?v=4f7770ea26';
+import { Chess } from '../vendor/chess.js?v=7e41954c2a';
+import { Board } from './board.js?v=7e41954c2a';
+import { engine } from './engine.js?v=7e41954c2a';
+import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE, forOpponent } from './explain.js?v=7e41954c2a';
+import { explainAsync } from './explainer.js?v=7e41954c2a';
+import { renderCard, badge, steps } from './card.js?v=7e41954c2a';
+import { icon } from './icons.js?v=7e41954c2a';
+import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js?v=7e41954c2a';
+import { store } from './store.js?v=7e41954c2a';
+import { renderText } from './glossary.js?v=7e41954c2a';
+import { haptic } from './haptics.js?v=7e41954c2a';
+import { recordGame, topPatterns } from './profile.js?v=7e41954c2a';
+import { paintEval } from './evalbar.js?v=7e41954c2a';
 
 export const SAMPLE_PGN = `[Event "Casual game"]
 [White "You"]
@@ -61,6 +61,7 @@ export function mountReview(root) {
         <button class="ctrl" data-nav="last" aria-label="Last move">${icon('last')}</button>
         <button class="ctrl" data-nav="flip" aria-label="Flip board">${icon('flip')}</button>
       </div>
+      <button type="button" class="scroll-hint" aria-label="Scroll for the explanation"><span>Scroll for the explanation</span>${icon('down')}</button>
     </div>
     <aside class="side-left">
       <div class="panel panel-pad summary" id="rv-summary"></div>

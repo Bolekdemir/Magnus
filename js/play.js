@@ -1,18 +1,18 @@
 // Play against Stockfish at a chosen strength, with optional coaching.
-import { Chess } from '../vendor/chess.js?v=4f7770ea26';
-import { Board } from './board.js?v=4f7770ea26';
-import { engine } from './engine.js?v=4f7770ea26';
-import { scoreToCp, isBad, moveFacts, TONE, winPct, assess, forOpponent } from './explain.js?v=4f7770ea26';
-import { explainAsync } from './explainer.js?v=4f7770ea26';
-import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=4f7770ea26';
-import { renderCard, badge } from './card.js?v=4f7770ea26';
-import { renderText } from './glossary.js?v=4f7770ea26';
-import { icon } from './icons.js?v=4f7770ea26';
-import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=4f7770ea26';
-import { store } from './store.js?v=4f7770ea26';
-import { haptic } from './haptics.js?v=4f7770ea26';
-import { topPatterns } from './profile.js?v=4f7770ea26';
-import { paintEval, resetEval } from './evalbar.js?v=4f7770ea26';
+import { Chess } from '../vendor/chess.js?v=7e41954c2a';
+import { Board } from './board.js?v=7e41954c2a';
+import { engine } from './engine.js?v=7e41954c2a';
+import { scoreToCp, isBad, moveFacts, TONE, winPct, assess, forOpponent } from './explain.js?v=7e41954c2a';
+import { explainAsync } from './explainer.js?v=7e41954c2a';
+import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=7e41954c2a';
+import { renderCard, badge } from './card.js?v=7e41954c2a';
+import { renderText } from './glossary.js?v=7e41954c2a';
+import { icon } from './icons.js?v=7e41954c2a';
+import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=7e41954c2a';
+import { store } from './store.js?v=7e41954c2a';
+import { haptic } from './haptics.js?v=7e41954c2a';
+import { topPatterns } from './profile.js?v=7e41954c2a';
+import { paintEval, resetEval } from './evalbar.js?v=7e41954c2a';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional
@@ -71,6 +71,7 @@ export function mountPlay(root, { onReview }) {
         <button class="ctrl" id="pl-flip" aria-label="Flip board">${icon('flip')}</button>
         <button class="ctrl" id="pl-resign" aria-label="Resign">${icon('flag')}<span class="lbl">Resign</span></button>
       </div>
+      <button type="button" class="scroll-hint" aria-label="Scroll for the explanation"><span>Scroll for the explanation</span>${icon('down')}</button>
     </div>
     <aside class="side">
       <div class="panel" id="pl-coach" aria-live="polite"></div>

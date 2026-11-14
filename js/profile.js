@@ -1,6 +1,6 @@
 // Mistake profile: which kinds of mistakes you make most, across reviewed games.
-import { store } from './store.js?v=4f7770ea26';
-import { CAUSE_LABEL, HABITS } from './explain.js?v=4f7770ea26';
+import { store } from './store.js?v=7e41954c2a';
+import { CAUSE_LABEL, HABITS } from './explain.js?v=7e41954c2a';
 
 const KEY = 'magnus.profile';
 

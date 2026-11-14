@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=4f7770ea26';
-import { mountReview, SAMPLE_PGN } from './review.js?v=4f7770ea26';
-import { mountPlay } from './play.js?v=4f7770ea26';
-import { icon } from './icons.js?v=4f7770ea26';
-import { store } from './store.js?v=4f7770ea26';
-import { termInfo } from './glossary.js?v=4f7770ea26';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=4f7770ea26';
-import { topPatterns } from './profile.js?v=4f7770ea26';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=4f7770ea26';
-import { drawBackgroundPosition } from './bgposition.js?v=4f7770ea26';
-import { engine } from './engine.js?v=4f7770ea26';
+import { Board } from './board.js?v=7e41954c2a';
+import { mountReview, SAMPLE_PGN } from './review.js?v=7e41954c2a';
+import { mountPlay } from './play.js?v=7e41954c2a';
+import { icon } from './icons.js?v=7e41954c2a';
+import { store } from './store.js?v=7e41954c2a';
+import { termInfo } from './glossary.js?v=7e41954c2a';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=7e41954c2a';
+import { topPatterns } from './profile.js?v=7e41954c2a';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=7e41954c2a';
+import { drawBackgroundPosition } from './bgposition.js?v=7e41954c2a';
+import { engine } from './engine.js?v=7e41954c2a';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -145,6 +145,29 @@ menu.addEventListener('click', (e) => {
   if (e.target.closest('#hap-test')) { if (!hapticsEnabled()) { setHaptics(true); } haptic('success'); }
   paintSettings();
 });
+
+// ---------- phones: the explanation waits below the fold, with a hint that you can scroll to it ----------
+function setupScrollHints() {
+  const head = () => document.querySelector('.topbar')?.getBoundingClientRect().bottom || 60;
+  for (const hint of document.querySelectorAll('.scroll-hint')) {
+    const split = hint.closest('.split3');
+    const boardCol = hint.closest('.board-col');
+    // the first column that sits below the board on a phone is where the explanation starts
+    const target = () => [...split.children].filter((c) => c !== boardCol && c.offsetParent)
+      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
+    hint.addEventListener('click', () => {
+      const t = target();
+      if (t) window.scrollTo({ top: scrollY + t.getBoundingClientRect().top - head() - 12, behavior: canMove() ? 'smooth' : 'auto' });
+    });
+    // watch every other column: whichever comes into view (hidden ones simply never intersect)
+    const seen = new Map();
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) seen.set(e.target, e.isIntersecting && (e.intersectionRatio > 0.18 || e.boundingClientRect.top < innerHeight * 0.55));
+      hint.classList.toggle('is-gone', [...seen.values()].some(Boolean));
+    }, { threshold: [0, 0.1, 0.18, 0.4] });
+    [...split.children].filter((c) => c !== boardCol).forEach((c) => io.observe(c));
+  }
+}
 
 // ---------- glossary tooltips ----------
 let tipEl = null;
@@ -327,6 +350,7 @@ function buildImport() {
 buildImport();
 
 drawBackgroundPosition(document.querySelector('.bg-pos'));
+setupScrollHints();
 go(location.hash.slice(1) || 'home', { push: false });
 // warm up the engine in the background so the first analysis starts instantly
 setTimeout(() => engine().ready.catch(() => {}), 600);
