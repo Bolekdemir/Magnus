@@ -5,7 +5,7 @@ import { mountPlay } from './play.js';
 import { icon } from './icons.js';
 import { store } from './store.js';
 import { termInfo } from './glossary.js';
-import { staggerIn, EASE_OUT, canFade, canMove } from './anim.js';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring } from './anim.js';
 import { topPatterns } from './profile.js';
 import { hapticsEnabled, setHaptics } from './haptics.js';
 import { engine } from './engine.js';
@@ -19,8 +19,39 @@ function applySettings() {
   if (settings.theme === 'system') delete root.dataset.theme; else root.dataset.theme = settings.theme;
   root.dataset.motion = settings.motion;
   store.set('magnus.settings', settings);
+  installSprings();
 }
 applySettings();
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', installSprings);
+
+// ---------- segmented controls: a pill slides to the chosen option ----------
+function syncSeg(seg, animate = true) {
+  const btn = seg.querySelector('button[aria-pressed="true"]');
+  let pill = seg.querySelector('.seg-pill');
+  if (!pill) {
+    pill = document.createElement('span');
+    pill.className = 'seg-pill still';
+    pill.setAttribute('aria-hidden', 'true');
+    seg.prepend(pill);
+    animate = false;
+  }
+  if (!btn || !btn.offsetWidth) { pill.style.opacity = btn ? pill.style.opacity : '0'; return; }
+  pill.style.opacity = '1';
+  pill.classList.toggle('still', !animate);
+  pill.style.width = btn.offsetWidth + 'px';
+  pill.style.transform = `translateX(${btn.offsetLeft}px)`;
+  if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.remove('still')));
+}
+function syncAllSegs(animate = false) { document.querySelectorAll('.seg').forEach((s) => syncSeg(s, animate)); }
+new MutationObserver((muts) => {
+  const touched = new Set();
+  for (const m of muts) {
+    if (m.type === 'attributes') { const seg = m.target.closest?.('.seg'); if (seg) touched.add(seg); }
+    else if (m.addedNodes.length) setTimeout(() => syncAllSegs(false), 0);
+  }
+  touched.forEach((seg) => syncSeg(seg, true));
+}).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-pressed', 'hidden'] });
+window.addEventListener('resize', () => syncAllSegs(false));
 
 document.querySelector('.tb-actions').innerHTML = `
   <button class="icon-btn" id="theme-btn" aria-label="Switch light or dark">${icon('moon')}</button>
@@ -54,6 +85,7 @@ function toggleMenu(open = menu.hidden) {
   setBtn.setAttribute('aria-expanded', String(open));
   if (open) {
     menu.hidden = false;
+    syncAllSegs(false);
     if (canFade()) menu.animate([{ opacity: 0, transform: canMove() ? 'scale(0.96)' : 'none' }, { opacity: 1, transform: 'none' }], { duration: 180, easing: EASE_OUT });
   } else if (!menu.hidden) {
     if (canFade()) menu.animate([{ opacity: 1 }, { opacity: 0, transform: canMove() ? 'scale(0.97)' : 'none' }], { duration: 130, easing: EASE_OUT }).onfinish = () => (menu.hidden = true);
@@ -121,7 +153,9 @@ function go(name, { push = true } = {}) {
   }
   if (name === 'home') renderHome();
   const el = views[name];
-  if (canFade()) el.animate([{ opacity: 0, transform: canMove() ? 'translateY(6px)' : 'none' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE_OUT });
+  if (canFade()) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: EASE_OUT });
+  if (canMove()) { const s = spring(0.8, 0.42); el.animate([{ transform: 'translateY(14px)' }, { transform: 'none' }], { duration: s.duration, easing: s.easing }); }
+  requestAnimationFrame(() => syncAllSegs(false));
   hideTip();
 }
 document.querySelectorAll('[data-view]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); go(a.dataset.view); }));

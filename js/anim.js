@@ -57,15 +57,43 @@ export function staggerIn(nodes, { step = 40, rise = 8, duration = 320 } = {}) {
   });
 }
 
-// Swap content with a soft crossfade (blur masks the seam).
+// Publish spring curves as CSS variables so stylesheets can use them:
+// --sp (gentle overshoot), --sp-bouncy (playful), --sp-soft (settles, almost no overshoot).
+export function installSprings() {
+  const r = document.documentElement.style;
+  const set = (name, d, resp) => {
+    if (canMove()) {
+      const s = spring(d, resp);
+      r.setProperty(`--${name}`, s.easing);
+      r.setProperty(`--${name}-d`, s.duration + 'ms');
+    } else {
+      r.setProperty(`--${name}`, EASE_OUT);
+      r.setProperty(`--${name}-d`, canFade() ? '140ms' : '0ms');
+    }
+  };
+  set('sp', 0.78, 0.38);
+  set('sp-bouncy', 0.6, 0.42);
+  set('sp-soft', 0.9, 0.3);
+  set('sp-piece', 0.8, 0.3);
+}
+
+// Swap content: fades in while sliding up with a slight overshoot (blur masks the seam).
 export function swapIn(el, { duration = 200 } = {}) {
   if (!canFade()) return;
+  el.animate([{ opacity: 0, filter: 'blur(3px)' }, { opacity: 1, filter: 'blur(0)' }], { duration, easing: EASE_OUT });
+  if (canMove()) {
+    const s = spring(0.74, 0.4);
+    el.animate([{ transform: 'translateY(10px) scale(0.985)' }, { transform: 'none' }], { duration: s.duration, easing: s.easing });
+  }
+}
+
+// Squash on landing: a quick wide-and-short, then tall-and-thin, then settle.
+export function squash(el, { amount = 0.07 } = {}) {
+  if (!canMove()) return;
+  const a = amount;
   el.animate(
-    [
-      { opacity: 0, filter: 'blur(3px)', transform: canMove() ? 'translateY(4px)' : 'none' },
-      { opacity: 1, filter: 'blur(0)', transform: 'none' },
-    ],
-    { duration, easing: EASE_OUT },
+    [{ scale: '1 1' }, { scale: `${1 + a} ${1 - a}`, offset: 0.3 }, { scale: `${1 - a * 0.4} ${1 + a * 0.4}`, offset: 0.62 }, { scale: '1 1' }],
+    { duration: 300, easing: EASE_OUT },
   );
 }
 

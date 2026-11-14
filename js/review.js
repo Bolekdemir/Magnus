@@ -10,6 +10,7 @@ import { store } from './store.js';
 import { renderText } from './glossary.js';
 import { haptic } from './haptics.js';
 import { recordGame } from './profile.js';
+import { paintEval } from './evalbar.js';
 
 export const SAMPLE_PGN = `[Event "Casual game"]
 [White "You"]
@@ -289,24 +290,7 @@ export function mountReview(root) {
 
   function updateEval() {
     const g = state.game;
-    const a = g.analysis[state.idx];
-    const pos = new Chess(g.fens[state.idx]);
-    let whiteWp = 50, txt = '';
-    if (pos.isCheckmate()) { whiteWp = pos.turn() === 'w' ? 0 : 100; txt = '#'; }
-    else if (a?.lines?.[0]) {
-      const pov = pos.turn() === 'w' ? 1 : -1;
-      whiteWp = winPct(scoreToCp(a.lines[0].score) * pov);
-      txt = fmtScore(a.lines[0].score, pov);
-    } else if (!a) return;
-    const bar = root.querySelector('.evalbar-w');
-    bar.style.transform = `scaleY(${Math.max(0.03, Math.min(0.97, whiteWp / 100))})`;
-    const n = root.querySelector('.evalbar-n');
-    n.textContent = txt.replace('+', '');
-    const whiteAhead = whiteWp >= 50;
-    const flip = state.side === 'b';
-    n.style.top = (whiteAhead !== flip) ? 'auto' : '4px';
-    n.style.bottom = (whiteAhead !== flip) ? '4px' : 'auto';
-    n.style.color = whiteAhead ? '#243031' : '#F7F1E4';
+    paintEval(root.querySelector('.evalbar'), g.fens[state.idx], g.analysis[state.idx], board.orientation === 'b');
   }
 
   function renderCurrent(animate) {
@@ -314,16 +298,19 @@ export function mountReview(root) {
     const el = $('#rv-card');
     const i = state.idx - 1;
     if (i < 0) {
+      board.clearBadge();
       el.innerHTML = `<div class="card"><span class="eyebrow">Start</span><p style="margin:0">Use the arrows (or your keyboard's ← →) to step through the game. Each move gets a grade and an explanation.</p><p class="muted" style="margin:0;font-size:14px">Tip: jump straight to your key moments in the summary above.</p></div>`;
       board.setArrows([]);
       return;
     }
     const card = g.cards[i];
     if (!card) {
+      board.clearBadge();
       el.innerHTML = `<div class="card"><div class="card-head"><span class="card-move">${moveNo(i)} ${esc(g.moves[i].san)}</span><span class="card-eval"><span class="thinking"><i></i><i></i><i></i></span></span></div><p class="empty-note">Analyzing this move…</p></div>`;
       board.setArrows([]);
       return;
     }
+    board.setBadge(g.moves[i].to, card.cls, { animate, delay: animate ? 150 : 0 });
     const pos = new Chess(g.fens[i + 1]);
     const a = g.analysis[i + 1];
     let ev = '';
@@ -367,6 +354,7 @@ export function mountReview(root) {
     state.preview = token;
     const banner = $('.rv-banner');
     board.setArrows([]);
+    board.clearBadge();
     board.setPosition(fen, { animate: false });
     const c = new Chess(fen);
     const total = pv.length;
@@ -397,6 +385,7 @@ export function mountReview(root) {
     const color = g.moves[i].color;
     board.setOrientation(color);
     board.setArrows([]);
+    board.clearBadge();
     board.setPosition(fen, { animate: true });
     board.setMarks({ last: null });
     const banner = $('.rv-banner');
@@ -474,7 +463,7 @@ export function mountReview(root) {
   // ---------- controls ----------
   root.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
     const n = b.dataset.nav;
-    if (n === 'flip') { board.setOrientation(board.orientation === 'w' ? 'b' : 'w'); root.querySelector('.evalbar').classList.toggle('flip', board.orientation === 'b'); return; }
+    if (n === 'flip') { board.setOrientation(board.orientation === 'w' ? 'b' : 'w'); updateEval(); return; }
     const to = { first: 0, prev: state.idx - 1, next: state.idx + 1, last: state.game.moves.length }[n];
     goto(to, n === 'prev' || n === 'next');
   }));

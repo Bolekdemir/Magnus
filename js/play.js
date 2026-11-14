@@ -10,6 +10,7 @@ import { icon } from './icons.js';
 import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT } from './anim.js';
 import { store } from './store.js';
 import { haptic } from './haptics.js';
+import { paintEval } from './evalbar.js';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional
@@ -57,7 +58,7 @@ export function mountPlay(root, { onReview }) {
   <div class="pl-game split" hidden>
     <div class="board-col">
       <div class="player" data-p="top"></div>
-      <div class="pl-board"></div>
+      <div class="board-frame"><div class="evalbar" aria-hidden="true"><div class="evalbar-w"></div><span class="evalbar-n"></span></div><div class="pl-board"></div></div>
       <div class="player" data-p="bottom"></div>
       <div class="ctrls">
         <button class="ctrl" id="pl-hint">${icon('hint')}Hint</button>
@@ -68,6 +69,7 @@ export function mountPlay(root, { onReview }) {
     </div>
     <aside class="side">
       <div class="panel" id="pl-coach" aria-live="polite"></div>
+      <div class="panel opp-line" id="pl-opp" hidden></div>
       <div class="panel"><div class="moves" id="pl-moves"></div></div>
       <button type="button" class="btn btn-ghost" id="pl-new">New game</button>
     </aside>
@@ -118,6 +120,10 @@ export function mountPlay(root, { onReview }) {
     board.setArrows([]);
     board.setPosition(st.chess.fen(), { animate: false });
     board.setMarks({ last: null, good: null, bad: null });
+    board.clearBadge();
+    $('#pl-opp').hidden = true;
+    evalEl().querySelector('.evalbar-w').style.transform = 'scaleY(0.5)';
+    evalEl().querySelector('.evalbar-n').textContent = '';
     setPlayers();
     renderMoves();
     coach(`<div class="card"><span class="eyebrow">Game on</span><p style="margin:0">You're playing ${st.user === 'w' ? 'White' : 'Black'} against <b>${esc(level().name)}</b> (≈ ${level().elo}). ${st.user === 'w' ? 'Your move.' : 'The bot moves first.'}</p></div>`);
@@ -127,6 +133,9 @@ export function mountPlay(root, { onReview }) {
     if (token.cancelled) return;
     if (st.chess.turn() === st.user) userTurn(); else botTurn();
   }
+
+  const evalEl = () => root.querySelector('.pl-game .evalbar');
+  function showEval(fen, analysis) { paintEval(evalEl(), fen, analysis, st.user === 'b'); }
 
   function setPlayers() {
     const L = level();
@@ -147,6 +156,13 @@ export function mountPlay(root, { onReview }) {
     const fen = st.chess.fen();
     st.hintStage = 0;
     st.turnAnalysis = engine().analyze(fen, { depth: 12, multipv: 2 }).catch(() => null);
+    const token = st.token;
+    st.turnAnalysis.then((a) => {
+      if (!a || token.cancelled || st.chess.fen() !== fen) return;
+      showEval(fen, a);
+      if (st.pendingBot) gradeBot(st.pendingBot, a);
+      st.pendingBot = null;
+    });
     board.setInteractive({
       color: st.user,
       dests: (sq) => st.chess.moves({ square: sq, verbose: true }).map((m) => m.to),
@@ -168,6 +184,8 @@ export function mountPlay(root, { onReview }) {
     board.setPosition(st.chess.fen(), { animate: true });
     board.setMarks({ last: [from, to], good: null, bad: null });
     board.setArrows([]);
+    board.clearBadge();
+    st.movedAt = performance.now();
     haptic(m.captured ? 'capture' : 'move');
 
     // Safety net
@@ -178,8 +196,10 @@ export function mountPlay(root, { onReview }) {
         if (token.cancelled) return;
         if (!ok) {
           st.chess.undo();
+          board.clearBadge();
           board.setPosition(fenBefore, { animate: true });
           board.setMarks({ last: lastMoveSquares(), bad: null });
+          st.movedAt = null;
           coach(`<div class="card"><span class="eyebrow">Taken back</span><p style="margin:0">Good call. Look for a move that keeps your pieces safe.</p></div>`);
           userTurn();
           return;
@@ -191,8 +211,7 @@ export function mountPlay(root, { onReview }) {
     if (await checkEnd()) return;
     const uci = from + to + (promo || '');
     const ply = st.chess.history().length - 1;
-    const gradeJob = st.grades ? gradeMove(fenBefore, uci, ply, token) : Promise.resolve();
-    await gradeJob;
+    await gradeMove(fenBefore, uci, ply, token);
     if (token.cancelled || st.over) return;
     botTurn();
   }
@@ -231,23 +250,45 @@ export function mountPlay(root, { onReview }) {
   }
 
   async function gradeMove(fenBefore, uci, ply, token) {
-    coach(`<div class="card"><div class="card-head"><span class="card-move">Checking your move</span><span class="card-eval"><span class="thinking"><i></i><i></i><i></i></span></span></div></div>`, false);
+    if (st.grades) coach(`<div class="card"><div class="card-head"><span class="card-move">Checking your move</span><span class="card-eval"><span class="thinking"><i></i><i></i><i></i></span></span></div></div>`, false);
     const before = await st.turnAnalysis;
     if (!before || token.cancelled) return;
     let after;
-    try { after = await engine().analyze(st.chess.fen(), { depth: 12, multipv: 1 }); } catch { return; }
+    const fenAfter = st.chess.fen();
+    try { after = await engine().analyze(fenAfter, { depth: 12, multipv: 2 }); } catch { return; }
     if (token.cancelled) return;
+    st.afterUser = { fen: fenAfter, analysis: after };
+    showEval(fenAfter, after);
     const hist = st.chess.history({ verbose: true });
     const pm = hist[hist.length - 2];
     const card = explainMove({ fen: fenBefore, uci, ply, before, after, prevUci: pm ? pm.from + pm.to : null });
     st.grades_[ply] = card;
+    if (!st.grades) return;
     paintGrade(ply, card);
+    board.setBadge(uci.slice(2, 4), card.cls, { delay: 60 });
+    if (isBad(card.cls)) haptic('error');
     const short = isBad(card.cls) ? (card.why[0] || '') : (card.gains[0] || 'A solid, quiet move.');
     coach(`<div class="card"><div class="card-head">${badge(card.cls)}<span class="card-move">${esc(card.san)}</span></div><p style="margin:0">${renderText(short)}</p><div class="card-actions"><button type="button" class="btn btn-ghost btn-sm" data-more>${icon('book')}Explain fully</button></div></div>`);
     $('#pl-coach [data-more]').addEventListener('click', () => {
       coach(`<div class="card">${renderCard(card, { actions: {} })}</div>`);
     });
     if (isBad(card.cls)) shake($('#pl-coach .badge'));
+  }
+
+  function gradeBot(p, after) {
+    if (!st.grades) return;
+    const hist = st.chess.history({ verbose: true });
+    const pm = hist[hist.length - 2];
+    let card;
+    try { card = explainMove({ fen: p.fen, uci: p.uci, ply: p.ply, before: p.before, after, prevUci: pm ? pm.from + pm.to : null }); } catch { return; }
+    st.grades_[p.ply] = card;
+    paintGrade(p.ply, card);
+    board.setBadge(p.uci.slice(2, 4), card.cls, { delay: 40 });
+    const opp = $('#pl-opp');
+    opp.hidden = false;
+    opp.innerHTML = `<div class="opp-row"><span class="avatar">${icon('robot')}</span><span>Bot played <b class="mono">${esc(card.san)}</b></span>${badge(card.cls)}<button type="button" class="btn btn-ghost btn-sm" data-why>Why?</button></div>`;
+    swapIn(opp.firstElementChild);
+    opp.querySelector('[data-why]').addEventListener('click', () => coach(`<div class="card">${renderCard(card, { moveLabel: 'Bot: ' + card.san, actions: {} })}</div>`));
   }
 
   async function botTurn() {
@@ -259,8 +300,10 @@ export function mountPlay(root, { onReview }) {
     const t0 = performance.now();
     let uci;
     try { uci = await pickMove(st.chess.fen()); } catch { return; }
-    const elapsed = performance.now() - t0;
-    if (elapsed < 450) await wait(450 - elapsed);
+    // feel human: think for roughly 0.5 to 1.5 seconds
+    const thinkFor = 500 + Math.random() * 1000;
+    const elapsed = performance.now() - Math.min(t0, st.movedAt ?? t0);
+    if (elapsed < thinkFor) await wait(thinkFor - elapsed);
     $('#bot-think')?.remove();
     void status;
     if (token.cancelled || st.over) return;
@@ -268,7 +311,9 @@ export function mountPlay(root, { onReview }) {
     try { m = st.chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined }); } catch { return; }
     board.setPosition(st.chess.fen(), { animate: true });
     board.setMarks({ last: [m.from, m.to], good: null, bad: null });
+    board.clearBadge();
     haptic('opponent');
+    if (st.afterUser) st.pendingBot = { fen: st.afterUser.fen, before: st.afterUser.analysis, uci, ply: st.chess.history().length - 1 };
     renderMoves();
     updateCaptured();
     if (await checkEnd()) return;
@@ -323,6 +368,8 @@ export function mountPlay(root, { onReview }) {
     if (st.over || st.chess.turn() !== st.user || st.chess.history().length < 2) return;
     cancelAll();
     st.chess.undo(); st.chess.undo();
+    st.pendingBot = null; st.afterUser = null;
+    board.clearBadge();
     board.setArrows([]);
     board.setPosition(st.chess.fen(), { animate: true });
     board.setMarks({ last: lastMoveSquares(), good: null, bad: null });

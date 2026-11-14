@@ -1,6 +1,12 @@
 // Chessboard view: animated pieces, drag + click moves, arrows, square marks.
 import { Chess } from '../vendor/chess.js';
-import { spring, canMove, canFade, EASE_OUT } from './anim.js';
+import { spring, canMove, canFade, EASE_OUT, squash } from './anim.js';
+
+// Move-quality badge glyphs and tones (shown on the destination square).
+export const BADGE = {
+  great: ['!', 'great'], best: ['★', 'best'], excellent: ['✓', 'good'], good: ['✓', 'good'], forced: ['•', 'good'],
+  inaccuracy: ['?!', 'inacc'], mistake: ['?', 'mistake'], blunder: ['??', 'blunder'],
+};
 
 const FILES = 'abcdefgh';
 
@@ -13,7 +19,8 @@ export class Board {
     this.selected = null;
     this.marks = {};
     root.classList.add('board');
-    root.innerHTML = `<div class="b-sqs"></div><div class="b-pcs"></div><svg class="b-arrows" viewBox="0 0 800 800" aria-hidden="true"></svg><div class="b-pop" hidden></div>`;
+    root.innerHTML = `<div class="b-sqs"></div><div class="b-pcs"></div><svg class="b-arrows" viewBox="0 0 800 800" aria-hidden="true"></svg><div class="b-badges"></div><div class="b-pop" hidden></div>`;
+    this.badgeLayer = root.querySelector('.b-badges');
     this.sqLayer = root.querySelector('.b-sqs');
     this.pcLayer = root.querySelector('.b-pcs');
     this.svg = root.querySelector('.b-arrows');
@@ -41,7 +48,7 @@ export class Board {
   }
   _place(el, sq) {
     const { col, row } = this._cell(sq);
-    el.style.transform = `translate(${col * 100}%, ${row * 100}%)`;
+    el.style.translate = `${col * 100}% ${row * 100}%`;
   }
 
   _buildSquares() {
@@ -72,6 +79,7 @@ export class Board {
     this._buildSquares();
     for (const p of this.pieces) { this._noAnim(p.el); this._place(p.el, p.sq); }
     this._drawArrows(this.arrows || [], false);
+    if (this.badge) this.setBadge(this.badge.sq, this.badge.cls, { animate: false });
   }
 
   _noAnim(el) {
@@ -113,7 +121,14 @@ export class Board {
         p.sq = n.sq;
         if (anim) {
           p.el.style.zIndex = 3;
-          p.el.addEventListener('transitionend', () => (p.el.style.zIndex = ''), { once: true });
+          const target = n.sq;
+          const done = (ev) => {
+            if (ev.propertyName !== 'translate') return;
+            p.el.removeEventListener('transitionend', done);
+            p.el.style.zIndex = '';
+            if (p.sq === target) squash(p.el, { amount: 0.06 });
+          };
+          p.el.addEventListener('transitionend', done);
         } else this._noAnim(p.el);
         this._place(p.el, n.sq);
         kept.push(p);
@@ -156,7 +171,13 @@ export class Board {
   _applyMarks() {
     if (!this.sqEls) return;
     const m = this.marks;
+    const origin = m.select ? this._cell(m.select) : null;
     for (const [sq, el] of Object.entries(this.sqEls)) {
+      if (origin && m.dests && m.dests.includes(sq)) {
+        const c = this._cell(sq);
+        const dist = Math.max(Math.abs(c.col - origin.col), Math.abs(c.row - origin.row));
+        el.style.setProperty('--dd', Math.min(140, (dist - 1) * 28) + 'ms');
+      }
       el.classList.toggle('m-last', !!(m.last && m.last.includes(sq)));
       el.classList.toggle('m-sel', m.select === sq);
       el.classList.toggle('m-check', m.check === sq);
@@ -221,10 +242,12 @@ export class Board {
   _select(sq) {
     const dests = this.interactive.dests(sq);
     this.selected = sq;
+    for (const p of this.pieces) p.el.classList.toggle('pc-lift', p.sq === sq);
     this.setMarks({ select: sq, dests });
   }
   _deselect() {
     this.selected = null;
+    for (const p of this.pieces) p.el.classList.remove('pc-lift');
     this.setMarks({ select: null, dests: null });
   }
 
@@ -272,7 +295,7 @@ export class Board {
       }
       x = ev.clientX - rect.left - grabX;
       y = ev.clientY - rect.top - grabY;
-      el.style.transform = `translate(${x}px, ${y}px) scale(1.08)`;
+      el.style.translate = `${x}px ${y}px`;
       const over = this._sqAt(ev.clientX, ev.clientY);
       this.setMarks({ hover: over });
       for (const [s, sqEl] of Object.entries(this.sqEls)) sqEl.classList.toggle('m-hover', s === over && (this.marks.dests || []).includes(s));
@@ -294,15 +317,16 @@ export class Board {
         this._noAnim(el);
         this._place(el, to);
         piece.sq = to; // provisional: the next setPosition confirms it
+        squash(el, { amount: 0.08 });
         this._deselect();
         this.interactive.onMove(from, to);
       } else {
         // spring back home from where it was dropped
         const s = spring(0.85, 0.32);
-        const fromT = `translate(${x}px, ${y}px)`;
+        const fromT = `${x}px ${y}px`;
         this._noAnim(el);
         this._place(el, from);
-        if (canMove()) el.animate([{ transform: fromT }, { transform: `translate(${homeX}px, ${homeY}px)` }], { duration: s.duration, easing: s.easing });
+        if (canMove()) el.animate([{ translate: fromT }, { translate: `${homeX}px ${homeY}px` }], { duration: s.duration, easing: s.easing });
         if (to === from) return; // dropped back: keep selection for click-to-move
         this._deselect();
       }
@@ -311,6 +335,28 @@ export class Board {
     target.addEventListener('pointerup', up);
     target.addEventListener('pointercancel', up);
   }
+
+  // ----- move-quality badge -----
+  setBadge(sq, cls, { animate = true, delay = 0 } = {}) {
+    const g = BADGE[cls];
+    this.badgeLayer.innerHTML = '';
+    this.badge = sq && g ? { sq, cls } : null;
+    if (!this.badge) return;
+    const { col, row } = this._cell(sq);
+    const cell = document.createElement('div');
+    cell.className = 'b-badge-cell';
+    cell.style.transform = `translate(${col * 100}%, ${row * 100}%)`;
+    cell.innerHTML = `<span class="b-badge t-${g[1]}" title="${cls}">${g[0]}</span>`;
+    this.badgeLayer.appendChild(cell);
+    const b = cell.firstElementChild;
+    if (animate && canMove()) {
+      const s = spring(0.55, 0.42);
+      b.animate([{ transform: 'scale(0.2) rotate(-25deg)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: s.duration, easing: s.easing, delay, fill: 'backwards' });
+    } else if (animate && canFade()) {
+      b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay, fill: 'backwards' });
+    }
+  }
+  clearBadge() { this.setBadge(null); }
 
   // Promotion chooser anchored to the target square. Resolves with 'q','r','b','n'.
   askPromotion(sq, color) {
