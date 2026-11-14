@@ -909,3 +909,6 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
   :root:not([data-theme="light"]) .m-share { background: rgba(83, 65, 69, 0.8); }
   :root:not([data-theme="light"]) .m-share i { background: linear-gradient(90deg, #9E6752, #FED7A5); }
 }
+/* dark mode keeps only the faint back wave */
+:root[data-theme="dark"] .bg-waves .w2, :root[data-theme="dark"] .bg-waves .w3 { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-waves .w2, :root:not([data-theme="light"]) .bg-waves .w3 { display: none; } }
