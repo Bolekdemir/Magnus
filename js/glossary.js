@@ -2,7 +2,7 @@
 // Text markers look like [[key|plain phrase|pro phrase]] or [[key|phrase]].
 // New players see the plain phrase with the term attached; once a term has been
 // seen enough times, the pro phrase takes over. Tapping a term explains it.
-import { store } from './store.js?v=5f984f8e76';
+import { store } from './store.js?v=8c194f19ac';
 
 export const TERMS = {
   hanging: { term: 'hanging', def: 'A piece is hanging when the opponent can capture it and you can\'t win anything back. Free material.' },
