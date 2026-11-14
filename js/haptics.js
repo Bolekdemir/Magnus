@@ -5,7 +5,7 @@
 // control (<input type="checkbox" switch>) plays the system's light haptic tap.
 // iOS only allows it while handling a real gesture, and finger-down doesn't count,
 // so a haptic asked for during finger-down is held until the finger lifts.
-import { store } from './store.js?v=f7d2ae9db2';
+import { store } from './store.js?v=5191e09630';
 
 const KEY = 'magnus.haptics';
 let enabled = store.get(KEY, true);

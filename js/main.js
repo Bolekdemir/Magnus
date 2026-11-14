@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=f7d2ae9db2';
-import { mountReview, SAMPLE_PGN } from './review.js?v=f7d2ae9db2';
-import { mountPlay } from './play.js?v=f7d2ae9db2';
-import { icon } from './icons.js?v=f7d2ae9db2';
-import { store } from './store.js?v=f7d2ae9db2';
-import { termInfo } from './glossary.js?v=f7d2ae9db2';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=f7d2ae9db2';
-import { topPatterns } from './profile.js?v=f7d2ae9db2';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=f7d2ae9db2';
-import { drawBackgroundPosition } from './bgposition.js?v=f7d2ae9db2';
-import { engine } from './engine.js?v=f7d2ae9db2';
+import { Board } from './board.js?v=5191e09630';
+import { mountReview, SAMPLE_PGN } from './review.js?v=5191e09630';
+import { mountPlay } from './play.js?v=5191e09630';
+import { icon } from './icons.js?v=5191e09630';
+import { store } from './store.js?v=5191e09630';
+import { termInfo } from './glossary.js?v=5191e09630';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=5191e09630';
+import { topPatterns } from './profile.js?v=5191e09630';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=5191e09630';
+import { drawBackgroundPosition } from './bgposition.js?v=5191e09630';
+import { engine } from './engine.js?v=5191e09630';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -173,6 +173,12 @@ function setupScrollHints() {
       const colTop = boardCol.getBoundingClientRect().top + scrollY;
       const h = Math.round(innerHeight - colTop);
       root.setProperty('--fold-h', h + 'px');
+      const strip = boardCol.querySelector('.move-strip'), ctrls = boardCol.querySelector('.ctrls');
+      if (strip && ctrls) {
+        const free = h - (ctrls.getBoundingClientRect().bottom + scrollY - colTop);
+        strip.classList.toggle('is-compact', free < 118);
+        strip.classList.toggle('no-room', free < 46);   // tiny screens: no strip rather than a cut-off one
+      }
     };
     new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) fold(); }).observe(boardCol);
     addEventListener('resize', () => requestAnimationFrame(fold));
@@ -184,6 +190,46 @@ function setupScrollHints() {
     }
     addEventListener('orientationchange', () => setTimeout(fold, 300));
     if (!CSS.supports?.('animation-timeline: view()')) setupCardRise(split, boardCol);
+  }
+}
+
+// Phones: a last-move strip under the buttons mirrors the headline of the coach / review card
+// (badge, move, one-line verdict); its button scrolls down to the full explanation.
+function setupMoveStrips() {
+  const head = () => document.querySelector('.topbar')?.getBoundingClientRect().bottom || 60;
+  for (const src of document.querySelectorAll('#pl-coach, #rv-card')) {
+    const col = src.closest('.split3')?.querySelector('.board-col');
+    if (!col) continue;
+    const strip = document.createElement('section');
+    strip.className = 'move-strip';
+    strip.setAttribute('aria-hidden', 'true'); // the real card below is the accessible one
+    col.querySelector('.scroll-hint')?.before(strip);
+    let last = '';
+    const render = () => {
+      const card = src.querySelector('.card') || src;
+      const eyebrow = card.querySelector(':scope > .eyebrow')?.textContent.trim() || '';
+      const headEl = card.querySelector('.card-head');
+      const pick = ['.warn-box p', '.why-box li', '.special-box p', ':scope > p:not(.muted)', '.sec.gains li', '.empty-note', 'p']
+        .map((q) => card.querySelector(q)).find((e) => e && e.textContent.trim());
+      let text = '';
+      if (pick) { const c = pick.cloneNode(true); c.querySelectorAll('.term--chip').forEach((n) => n.remove()); text = c.textContent.trim().replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1'); }
+      const act = card.querySelector('.warn-box') ? 'Decide' : headEl?.querySelector('.badge') ? 'See why' : 'More';
+      const html = `<div class="ms-head">${headEl ? headEl.innerHTML : `<span class="ms-eyebrow">${eyebrow}</span>`}</div>`
+        + (text ? `<p class="ms-text">${text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</p>` : '')
+        + `<button type="button" class="ms-why">${act}${icon('down')}</button>`;
+      if (html === last) return;
+      last = html;
+      strip.innerHTML = html;
+      strip.hidden = !text && !headEl;
+      if (canFade() && strip.isConnected && strip.offsetParent) {
+        strip.animate([{ opacity: 0, transform: 'translateY(8px)', filter: 'blur(3px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 320, easing: EASE_OUT });
+      }
+    };
+    strip.addEventListener('click', () => {
+      window.scrollTo({ top: scrollY + src.getBoundingClientRect().top - head() - 12, behavior: canMove() ? 'smooth' : 'auto' });
+    });
+    new MutationObserver(() => requestAnimationFrame(render)).observe(src, { childList: true, subtree: true, characterData: true });
+    render();
   }
 }
 
@@ -389,6 +435,7 @@ buildImport();
 
 drawBackgroundPosition(document.querySelector('.bg-pos'));
 setupScrollHints();
+setupMoveStrips();
 go(location.hash.slice(1) || 'home', { push: false });
 // warm up the engine in the background so the first analysis starts instantly
 setTimeout(() => engine().ready.catch(() => {}), 600);
