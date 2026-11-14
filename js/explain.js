@@ -3,7 +3,7 @@
 import {
   Chess, VAL, NAME, other, seeOn, loosePieces, threatsBy, forkFrom, lineTacticFrom,
   discoveredAfter, features, playUci, balance, moveUci, uciToSan, attacksFrom,
-} from './chessutil.js?v=42469dfa67';
+} from './chessutil.js?v=4ff97de7db';
 
 // ---------- scores ----------
 export function scoreToCp(s) {
@@ -505,3 +505,40 @@ export const CAUSE_LABEL = {
 };
 
 export { moveUci, playUci };
+
+// ---------- perspective: rewrite a card for a move the reader didn't make ----------
+// Cards are written to the player who moved ("you", "your opponent"). For the bot's moves
+// (or the opponent's moves in a review) the reader is that player's opponent, so:
+// "your opponent" -> "you", and the mover's "you/your" -> "they/their".
+const THEY_VERBS = /^(?:can|can't|cannot|missed|offer|let|have|had|go|get|focus|end|are|now|found|were|weren't|will|would|could|should|need|lose|win|keep|play|played|give|gave|took|take|make|made)\b/;
+function flipPerspective(text) {
+  if (!text) return text;
+  const A = '\u0001', B = '\u0002'; // placeholders for the reader's "You"/"you"
+  let s = text
+    .replace(/\bYour opponent's\b/g, `${A}r`).replace(/\byour opponent's\b/g, `${B}r`)
+    .replace(/\bYour opponent has\b/g, `${A} have`).replace(/\byour opponent has\b/g, `${B} have`)
+    .replace(/\bYour opponent was\b/g, `${A} were`).replace(/\byour opponent was\b/g, `${B} were`)
+    .replace(/\bYour opponent gets\b/g, `${A} get`).replace(/\byour opponent gets\b/g, `${B} get`)
+    .replace(/\bYour opponent is\b/g, `${A} are`).replace(/\byour opponent is\b/g, `${B} are`)
+    .replace(/\bYour opponent\b/g, A).replace(/\byour opponent\b/g, B);
+  s = s
+    .replace(/\bYou're\b/g, "They're").replace(/\byou're\b/g, "they're")
+    .replace(/\bYou've\b/g, "They've").replace(/\byou've\b/g, "they've")
+    .replace(/\bYour\b/g, 'Their').replace(/\byour\b/g, 'their')
+    .replace(/\bYou\b/g, 'They')
+    .replace(/\byou\b(\s+)(\S+)?/g, (m, sp, next) => (next && THEY_VERBS.test(next) ? `they${sp}${next}` : `them${sp}${next || ''}`));
+  return s.split(A).join('You').split(B).join('you');
+}
+export function forOpponent(card) {
+  if (!card || card.pov === 'them') return card;
+  const f = flipPerspective;
+  const line = (l) => l && { ...l, steps: l.steps.map((st) => ({ ...st, note: f(st.note) })) };
+  return {
+    ...card,
+    pov: 'them',
+    gains: card.gains.map(f), costs: card.costs.map(f), why: card.why.map(f), later: card.later.map(f),
+    special: f(card.special), habit: null,
+    soon: line(card.soon),
+    better: card.better && { ...card.better, gains: card.better.gains.map(f), costs: (card.better.costs || []).map(f), line: line(card.better.line) },
+  };
+}

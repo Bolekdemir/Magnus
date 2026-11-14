@@ -1,7 +1,7 @@
 // Renders an explanation card (from explain.js) to HTML.
-import { CLASSES, isBad, assess, TONE } from './explain.js?v=42469dfa67';
-import { renderText } from './glossary.js?v=42469dfa67';
-import { icon } from './icons.js?v=42469dfa67';
+import { CLASSES, isBad, assess, TONE } from './explain.js?v=4ff97de7db';
+import { renderText } from './glossary.js?v=4ff97de7db';
+import { icon } from './icons.js?v=4ff97de7db';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -42,9 +42,10 @@ export function renderCard(card, opts = {}) {
   html += list(card.costs, 'costs', 'What it gives up', null);
   if (card.soon && card.soon.steps.length) {
     let tail = '';
+    const who = card.pov === 'them' ? 'they' : 'you';
     if (card.soon.mate) tail = 'This line ends in checkmate.';
-    else if (card.soon.net <= -1) tail = `In this line you end up ${-card.soon.net} point${card.soon.net === -1 ? '' : 's'} down.`;
-    else if (card.soon.net >= 1) tail = `In this line you end up ${card.soon.net} point${card.soon.net === 1 ? '' : 's'} up.`;
+    else if (card.soon.net <= -1) tail = `In this line ${who} end up ${-card.soon.net} point${card.soon.net === -1 ? '' : 's'} down.`;
+    else if (card.soon.net >= 1) tail = `In this line ${who} end up ${card.soon.net} point${card.soon.net === 1 ? '' : 's'} up.`;
     html += `<div class="sec"><h4>Next few moves (best play)</h4>${steps(card.soon)}${tail ? `<p class="empty-note">${tail}</p>` : ''}</div>`;
   }
   html += list(card.later, 'later', 'Long term', null);

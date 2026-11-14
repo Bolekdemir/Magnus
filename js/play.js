@@ -1,18 +1,18 @@
 // Play against Stockfish at a chosen strength, with optional coaching.
-import { Chess } from '../vendor/chess.js?v=42469dfa67';
-import { Board } from './board.js?v=42469dfa67';
-import { engine } from './engine.js?v=42469dfa67';
-import { scoreToCp, isBad, moveFacts, TONE, winPct, assess } from './explain.js?v=42469dfa67';
-import { explainAsync } from './explainer.js?v=42469dfa67';
-import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=42469dfa67';
-import { renderCard, badge } from './card.js?v=42469dfa67';
-import { renderText } from './glossary.js?v=42469dfa67';
-import { icon } from './icons.js?v=42469dfa67';
-import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=42469dfa67';
-import { store } from './store.js?v=42469dfa67';
-import { haptic } from './haptics.js?v=42469dfa67';
-import { topPatterns } from './profile.js?v=42469dfa67';
-import { paintEval, resetEval } from './evalbar.js?v=42469dfa67';
+import { Chess } from '../vendor/chess.js?v=4ff97de7db';
+import { Board } from './board.js?v=4ff97de7db';
+import { engine } from './engine.js?v=4ff97de7db';
+import { scoreToCp, isBad, moveFacts, TONE, winPct, assess, forOpponent } from './explain.js?v=4ff97de7db';
+import { explainAsync } from './explainer.js?v=4ff97de7db';
+import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=4ff97de7db';
+import { renderCard, badge } from './card.js?v=4ff97de7db';
+import { renderText } from './glossary.js?v=4ff97de7db';
+import { icon } from './icons.js?v=4ff97de7db';
+import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=4ff97de7db';
+import { store } from './store.js?v=4ff97de7db';
+import { haptic } from './haptics.js?v=4ff97de7db';
+import { topPatterns } from './profile.js?v=4ff97de7db';
+import { paintEval, resetEval } from './evalbar.js?v=4ff97de7db';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional
@@ -382,6 +382,7 @@ export function mountPlay(root, { onReview }) {
     let card;
     try { card = await explainAsync({ fen: p.fen, uci: p.uci, ply: p.ply, before: p.before, after, prevUci: pm ? pm.from + pm.to : null }); } catch { return; }
     if (token.cancelled || st.chess.history().length !== p.ply + 1) return;
+    card = forOpponent(card); // written from your side: "they" is the bot
     st.grades_[p.ply] = card;
     paintGrade(p.ply, card);
     refreshLeft();

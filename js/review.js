@@ -1,17 +1,17 @@
 // Game review: analyse every position, explain every move, replay lines, retry mistakes.
-import { Chess } from '../vendor/chess.js?v=42469dfa67';
-import { Board } from './board.js?v=42469dfa67';
-import { engine } from './engine.js?v=42469dfa67';
-import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE } from './explain.js?v=42469dfa67';
-import { explainAsync } from './explainer.js?v=42469dfa67';
-import { renderCard, badge, steps } from './card.js?v=42469dfa67';
-import { icon } from './icons.js?v=42469dfa67';
-import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js?v=42469dfa67';
-import { store } from './store.js?v=42469dfa67';
-import { renderText } from './glossary.js?v=42469dfa67';
-import { haptic } from './haptics.js?v=42469dfa67';
-import { recordGame, topPatterns } from './profile.js?v=42469dfa67';
-import { paintEval } from './evalbar.js?v=42469dfa67';
+import { Chess } from '../vendor/chess.js?v=4ff97de7db';
+import { Board } from './board.js?v=4ff97de7db';
+import { engine } from './engine.js?v=4ff97de7db';
+import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE, forOpponent } from './explain.js?v=4ff97de7db';
+import { explainAsync } from './explainer.js?v=4ff97de7db';
+import { renderCard, badge, steps } from './card.js?v=4ff97de7db';
+import { icon } from './icons.js?v=4ff97de7db';
+import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js?v=4ff97de7db';
+import { store } from './store.js?v=4ff97de7db';
+import { renderText } from './glossary.js?v=4ff97de7db';
+import { haptic } from './haptics.js?v=4ff97de7db';
+import { recordGame, topPatterns } from './profile.js?v=4ff97de7db';
+import { paintEval } from './evalbar.js?v=4ff97de7db';
 
 export const SAMPLE_PGN = `[Event "Casual game"]
 [White "You"]
@@ -339,7 +339,8 @@ export function mountReview(root) {
       board.setArrows([]);
       return;
     }
-    const card = g.cards[i];
+    const raw = g.cards[i];
+    const card = raw && g.moves[i].color !== state.side ? forOpponent(raw) : raw;
     if (!card) {
       board.clearBadge();
       el.innerHTML = `<div class="card"><div class="card-head"><span class="card-move">${moveNo(i)} ${esc(g.moves[i].san)}</span><span class="card-eval"><span class="thinking"><i></i><i></i><i></i></span></span></div><p class="empty-note">Analyzing this move…</p></div>`;

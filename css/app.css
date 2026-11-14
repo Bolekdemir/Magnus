@@ -12,7 +12,7 @@
   --forest: #3F6A5E;
   --navy: #1F2C4A;
 
-  --bg: #FBF4E6;
+  --bg: #EDE6D8;
   --surface: #FFFFFF;
   --surface-2: #F4EEE2;
   --fg: #243031;
@@ -795,3 +795,6 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
   .split3 { grid-template-columns: minmax(0, 320px) minmax(0, 1fr) minmax(0, 420px); gap: 40px; }
   .split3 > .board-col { max-width: min(1000px, calc(100dvh - 200px)); }
 }
+
+/* light mode: warmer, less bright stone base; header follows it */
+:root:not([data-theme="dark"]) .topbar { background: color-mix(in srgb, var(--bg) 90%, transparent); }
