@@ -2,7 +2,7 @@
 import { Chess } from '../vendor/chess.js';
 import { Board } from './board.js';
 import { engine } from './engine.js';
-import { scoreToCp, isBad, moveFacts, TONE } from './explain.js';
+import { scoreToCp, isBad, moveFacts, TONE, winPct } from './explain.js';
 import { explainAsync } from './explainer.js';
 import { loosePieces, threatsBy, NAME, other } from './chessutil.js';
 import { renderCard, badge } from './card.js';
@@ -197,7 +197,10 @@ export function mountPlay(root, { onReview }) {
 
     // Safety net
     if (st.safety && !st.chess.isGameOver()) {
-      const danger = dangerOf(fenBefore, m);
+      let danger = dangerOf(fenBefore, m);
+      // The quick rule only spots pieces that look loose. Ask the engine whether the move really loses.
+      if (danger && !(await engineAgreesItsBad(fenBefore, from + to + (promo || '')))) danger = null;
+      if (token.cancelled) return;
       if (danger) {
         const ok = await confirmDanger(danger, m);
         if (token.cancelled) return;
@@ -227,6 +230,19 @@ export function mountPlay(root, { onReview }) {
     const h = st.chess.history({ verbose: true });
     const l = h[h.length - 1];
     return l ? [l.from, l.to] : null;
+  }
+
+  async function engineAgreesItsBad(fenBefore, uci) {
+    const before = await st.turnAnalysis;
+    const lines = before?.lines || [];
+    if (!lines.length) return true;
+    const bestWp = winPct(scoreToCp(lines[0].score));
+    // the engine's own top choices are never "blunders"
+    if (lines.some((l) => l.pv?.[0] === uci && bestWp - winPct(scoreToCp(l.score)) < 6)) return false;
+    let after;
+    try { after = await engine().analyze(st.chess.fen(), { depth: 11, multipv: 1 }); } catch { return true; }
+    const wp = 100 - winPct(scoreToCp(after.lines[0]?.score));
+    return bestWp - wp >= 8;
   }
 
   function dangerOf(fenBefore, m) {

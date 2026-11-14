@@ -102,10 +102,9 @@ a { color: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- top bar ---------- */
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); }
 .topbar {
-  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 15;
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  position: sticky; top: 0; z-index: 15; padding-top: env(safe-area-inset-top, 0px);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
   backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
   border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
 }
@@ -114,9 +113,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; font-weight: 650; font-size: 17px; letter-spacing: -0.02em; margin-right: auto; }
-.brand-mark { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background-color: #243031;
-  background-image: repeating-conic-gradient(rgba(255, 243, 221, 0.07) 0 25%, transparent 0 50%); background-size: 15px 15px; }
-.brand-mark img { width: 22px; height: 22px; display: block; }
+.brand-mark { width: 32px; height: 32px; border-radius: 9px; overflow: hidden; display: block; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.22), 0 6px 14px -6px rgba(0, 0, 0, 0.4); }
+.brand-mark img { width: 32px; height: 32px; display: block; }
 .nav { display: flex; gap: 2px; }
 .nav a {
   text-decoration: none; padding: 7px 12px; border-radius: 999px; font-size: 14px; font-weight: 520; color: var(--fg-2);
@@ -517,7 +515,7 @@ html { background: var(--bg); }
 
 /* frosted surfaces so the background reads through */
 .panel, .way:not(.feature) { background: var(--glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); }
-.level, .toggle, .ctrl, .moment, .game-row, .btn-ghost { background: var(--glass); }
+.level, .toggle, .moment, .game-row { background: var(--glass); }
 @media (prefers-reduced-transparency: reduce) { .panel, .way:not(.feature), .level, .toggle, .ctrl, .moment, .game-row, .btn-ghost { background: var(--surface); backdrop-filter: none; } }
 :root[data-theme="dark"] .bg-ghost { filter: invert(1); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-ghost { filter: invert(1); } }
@@ -526,35 +524,51 @@ html { background: var(--bg); }
 .opp-row .btn { margin-left: auto; }
 @media (max-width: 900px) { .board-frame { grid-template-columns: 20px minmax(0, 1fr); gap: 6px; } }
 
-/* =====================  v3: richer controls  ===================== */
-.btn { position: relative; border: 1px solid transparent; letter-spacing: -0.005em; }
-.btn-primary {
-  background: linear-gradient(180deg, #33456E 0%, #1F2C4A 55%, #192440 100%); color: #fff; border-color: rgba(10, 18, 36, 0.6);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 1px 2px rgba(31, 44, 74, 0.3), 0 8px 18px -8px rgba(31, 44, 74, 0.55);
+/* =====================  raised "key" buttons: rim, lip, gloss streak  ===================== */
+:root {
+  --kp-face: #2F426D; --kp-rim: #4F648F; --kp-lip: #131B30; --kp-ink: #FFF3DD; --kp-gloss: rgba(255, 255, 255, 0.13);
+  --ks-face: #F6F1E7; --ks-rim: #FFFFFF; --ks-lip: #D6CEBE; --ks-ink: #243031; --ks-gloss: rgba(255, 255, 255, 0.85);
 }
-.btn-primary .ic { color: #A9D7C8; }
-.btn-ghost {
-  border-color: color-mix(in srgb, var(--line-2) 80%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 2px rgba(36, 48, 49, 0.06), 0 6px 14px -10px rgba(36, 48, 49, 0.35);
+:root[data-theme="dark"] {
+  --kp-face: #CDEDE2; --kp-rim: #F2FBF7; --kp-lip: #6FAF9C; --kp-ink: #2E6B5A; --kp-gloss: rgba(255, 255, 255, 0.8);
+  --ks-face: #263234; --ks-rim: #344345; --ks-lip: #0B1112; --ks-ink: #FFF3DD; --ks-gloss: rgba(255, 255, 255, 0.07);
 }
-.btn-ghost .ic, .ctrl .ic { color: var(--accent); }
-.ctrl {
-  border-color: color-mix(in srgb, var(--line-2) 80%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 2px rgba(36, 48, 49, 0.06), 0 6px 14px -10px rgba(36, 48, 49, 0.35);
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --kp-face: #CDEDE2; --kp-rim: #F2FBF7; --kp-lip: #6FAF9C; --kp-ink: #2E6B5A; --kp-gloss: rgba(255, 255, 255, 0.8);
+    --ks-face: #263234; --ks-rim: #344345; --ks-lip: #0B1112; --ks-ink: #FFF3DD; --ks-gloss: rgba(255, 255, 255, 0.07);
+  }
+}
+.btn-primary, .btn-ghost, .ctrl {
+  --lip: 5px; --gw: 22px;
+  position: relative; overflow: hidden; isolation: isolate;
+  background: var(--kf); color: var(--ki); border: 3px solid var(--kr); border-radius: 16px;
+  box-shadow: 0 var(--lip) 0 var(--kl), 0 calc(var(--lip) + 7px) 16px -9px rgba(0, 0, 0, 0.4);
+  margin-bottom: var(--lip); font-weight: 750; backdrop-filter: none;
+  transition: translate 90ms var(--ease-out), box-shadow 90ms var(--ease-out), filter 160ms ease, scale var(--sp-bouncy-d, 300ms) var(--sp-bouncy, ease);
+}
+.btn-primary { --kf: var(--kp-face); --kr: var(--kp-rim); --kl: var(--kp-lip); --ki: var(--kp-ink); --kg: var(--kp-gloss); height: 50px; padding: 0 24px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 14px; }
+.btn-ghost, .ctrl { --kf: var(--ks-face); --kr: var(--ks-rim); --kl: var(--ks-lip); --ki: var(--ks-ink); --kg: var(--ks-gloss); }
+.btn-primary::before, .btn-ghost::before, .ctrl::before {
+  content: ""; position: absolute; z-index: -1; top: -20%; bottom: -20%; left: 12px; width: var(--gw);
+  background: var(--kg); transform: skewX(-24deg); border-radius: 3px; pointer-events: none;
+}
+.btn-primary::after, .btn-ghost::after, .ctrl::after {
+  content: ""; position: absolute; z-index: -1; left: calc(12px + var(--gw) + 6px); top: -20%; bottom: -20%; width: calc(var(--gw) * 0.3);
+  background: var(--kg); opacity: 0.6; transform: skewX(-24deg); pointer-events: none;
+}
+.btn-primary .ic, .btn-ghost .ic, .ctrl .ic { color: currentColor; }
+.btn-primary:active, .btn-ghost:active, .ctrl:active { translate: 0 calc(var(--lip) - 1px); box-shadow: 0 1px 0 var(--kl), 0 3px 8px -6px rgba(0, 0, 0, 0.35); }
+.btn-sm.btn-primary, .btn-sm.btn-ghost { --lip: 4px; --gw: 14px; height: 38px; padding: 0 14px; border-width: 2px; border-radius: 12px; font-size: 12.5px; }
+.btn-sm.btn-ghost { font-size: 13px; }
+.ctrl { --lip: 4px; --gw: 14px; border-width: 2px; border-radius: 14px; }
+.btn-primary[disabled], .btn-ghost[disabled], .ctrl[disabled] { box-shadow: 0 2px 0 var(--kl); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover, .btn-ghost:hover, .ctrl:hover { filter: brightness(1.05) saturate(1.05); }
 }
 .icon-btn { border: 1px solid transparent; }
-@media (hover: hover) and (pointer: fine) {
-  .btn-primary:hover { background: linear-gradient(180deg, #3A4E7C 0%, #22325A 55%, #1B2747 100%); }
-  .icon-btn:hover { border-color: var(--line); background: var(--glass); }
-}
-:root[data-theme="dark"] .btn-primary { background: linear-gradient(180deg, #C4EADD 0%, #A9D7C8 55%, #94C8B7 100%); color: #12191A; border-color: rgba(0,0,0,0.3); box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(0,0,0,0.12), 0 8px 20px -8px rgba(118,183,166,0.45); }
-:root[data-theme="dark"] .btn-primary .ic { color: #1F4A40; }
-:root[data-theme="dark"] .btn-ghost, :root[data-theme="dark"] .ctrl { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 6px 14px -10px rgba(0,0,0,0.6); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .btn-primary { background: linear-gradient(180deg, #C4EADD 0%, #A9D7C8 55%, #94C8B7 100%); color: #12191A; border-color: rgba(0,0,0,0.3); box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(0,0,0,0.12), 0 8px 20px -8px rgba(118,183,166,0.45); }
-  :root:not([data-theme="light"]) .btn-primary .ic { color: #1F4A40; }
-  :root:not([data-theme="light"]) .btn-ghost, :root:not([data-theme="light"]) .ctrl { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 6px 14px -10px rgba(0,0,0,0.6); }
-}
+@media (hover: hover) and (pointer: fine) { .icon-btn:hover { border-color: var(--line); background: var(--glass); } }
+.banner .btn { margin-bottom: 0; }
 
 /* nav: sliding pill */
 .nav { position: relative; isolation: isolate; padding: 3px; border-radius: 999px; background: var(--seg-bg); }
