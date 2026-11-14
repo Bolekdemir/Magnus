@@ -1102,3 +1102,31 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 :root:not([data-theme="light"]) .level[aria-pressed="true"] .meter i.on, :root:not([data-theme="light"]) .level .meter i.on { background: #D2AFA8; }
 :root:not([data-theme="light"]) .hero h1 em { color: #D2AFA8; }
 }
+
+/* =====================  PC: board and left column stay put, only the right column scrolls  ===================== */
+@media (min-width: 901px) {
+  .split3 > .board-col { position: sticky; top: 84px; align-self: start; }
+  /* room at the end so the pinned board never gets pushed up when you reach the bottom */
+  .split3 > .side { padding-bottom: 96px; }
+  /* the right column brings its own end spacing; page padding under a full-height board only adds a pointless scroll */
+  main[data-view="play"], main[data-view="review"] { padding-bottom: 4px; }
+}
+@media (min-width: 1440px) {
+  .split3 > .side-left { align-self: start; max-height: calc(100dvh - 100px); overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: none; padding-bottom: 4px; }
+  .split3 > .side-left::-webkit-scrollbar { display: none; }
+}
+/* right-column cards rise in as they enter and soften as they slide up under the header */
+@keyframes side-rise { from { opacity: 0; translate: 0 36px; scale: 0.97; filter: blur(5px); } to { opacity: 1; translate: 0 0; scale: 1; filter: none; } }
+@keyframes side-leave { from { opacity: 1; scale: 1; filter: none; } to { opacity: 0.15; scale: 0.97; filter: blur(3px); } }
+@media (min-width: 901px) {
+  @supports (animation-timeline: view()) {
+    :root:not([data-motion="off"]):not([data-motion="reduced"]) .split3 > .side > * {
+      transform-origin: 50% 0%;
+      animation: side-rise cubic-bezier(0.22, 0.8, 0.24, 1) both, side-leave linear forwards;
+      animation-timeline: view(), view();
+      animation-range: entry 0% cover 22%, exit 30% exit 100%;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) { .split3 > .side > * { animation: none !important; } }

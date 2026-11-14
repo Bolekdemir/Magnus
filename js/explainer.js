@@ -1,5 +1,5 @@
 // explainAsync(ctx): explanation from a background worker, with a main-thread fallback.
-import { explainMove } from './explain.js?v=a627bf260a';
+import { explainMove } from './explain.js?v=ad9937f2d8';
 
 let worker = null;
 let broken = false;
@@ -18,7 +18,7 @@ function getWorker() {
   if (broken) return null;
   if (!worker) {
     try {
-      worker = new Worker(new URL('./explain-worker.js?v=a627bf260a', import.meta.url), { type: 'module' });
+      worker = new Worker(new URL('./explain-worker.js?v=ad9937f2d8', import.meta.url), { type: 'module' });
       worker.onmessage = (e) => {
         const p = pending.get(e.data.id);
         if (!p) return;
