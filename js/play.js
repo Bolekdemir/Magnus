@@ -1,18 +1,18 @@
 // Play against Stockfish at a chosen strength, with optional coaching.
-import { Chess } from '../vendor/chess.js?v=578809bc23';
-import { Board } from './board.js?v=578809bc23';
-import { engine } from './engine.js?v=578809bc23';
-import { scoreToCp, isBad, moveFacts, TONE, winPct, assess } from './explain.js?v=578809bc23';
-import { explainAsync } from './explainer.js?v=578809bc23';
-import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=578809bc23';
-import { renderCard, badge } from './card.js?v=578809bc23';
-import { renderText } from './glossary.js?v=578809bc23';
-import { icon } from './icons.js?v=578809bc23';
-import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=578809bc23';
-import { store } from './store.js?v=578809bc23';
-import { haptic } from './haptics.js?v=578809bc23';
-import { topPatterns } from './profile.js?v=578809bc23';
-import { paintEval, resetEval } from './evalbar.js?v=578809bc23';
+import { Chess } from '../vendor/chess.js?v=42469dfa67';
+import { Board } from './board.js?v=42469dfa67';
+import { engine } from './engine.js?v=42469dfa67';
+import { scoreToCp, isBad, moveFacts, TONE, winPct, assess } from './explain.js?v=42469dfa67';
+import { explainAsync } from './explainer.js?v=42469dfa67';
+import { loosePieces, threatsBy, NAME, other } from './chessutil.js?v=42469dfa67';
+import { renderCard, badge } from './card.js?v=42469dfa67';
+import { renderText } from './glossary.js?v=42469dfa67';
+import { icon } from './icons.js?v=42469dfa67';
+import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js?v=42469dfa67';
+import { store } from './store.js?v=42469dfa67';
+import { haptic } from './haptics.js?v=42469dfa67';
+import { topPatterns } from './profile.js?v=42469dfa67';
+import { paintEval, resetEval } from './evalbar.js?v=42469dfa67';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional

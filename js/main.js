@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=578809bc23';
-import { mountReview, SAMPLE_PGN } from './review.js?v=578809bc23';
-import { mountPlay } from './play.js?v=578809bc23';
-import { icon } from './icons.js?v=578809bc23';
-import { store } from './store.js?v=578809bc23';
-import { termInfo } from './glossary.js?v=578809bc23';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=578809bc23';
-import { topPatterns } from './profile.js?v=578809bc23';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=578809bc23';
-import { drawBackgroundPosition } from './bgposition.js?v=578809bc23';
-import { engine } from './engine.js?v=578809bc23';
+import { Board } from './board.js?v=42469dfa67';
+import { mountReview, SAMPLE_PGN } from './review.js?v=42469dfa67';
+import { mountPlay } from './play.js?v=42469dfa67';
+import { icon } from './icons.js?v=42469dfa67';
+import { store } from './store.js?v=42469dfa67';
+import { termInfo } from './glossary.js?v=42469dfa67';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=42469dfa67';
+import { topPatterns } from './profile.js?v=42469dfa67';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=42469dfa67';
+import { drawBackgroundPosition } from './bgposition.js?v=42469dfa67';
+import { engine } from './engine.js?v=42469dfa67';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -42,6 +42,9 @@ function syncSeg(seg, animate = true) {
   movePill(pill, btn, animate);
 }
 installJelly();
+// focus rings only when navigating by keyboard
+window.addEventListener('keydown', (e) => { if (e.key === 'Tab') root.dataset.input = 'key'; }, true);
+window.addEventListener('pointerdown', () => { root.dataset.input = 'pointer'; }, true);
 
 // nav: the same sliding pill under the current page
 const navEl = document.querySelector('.nav');

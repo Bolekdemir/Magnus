@@ -117,7 +117,7 @@ export function pop(el, { scale = 0.92 } = {}) {
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- jelly press: squash down on press, stretch past and settle on release ----------
-const PRESSABLE = '.btn, .ctrl, .icon-btn, .level, .way, .moment, .game-row, .seg button, .nav a, .mv, .toggle';
+const PRESSABLE = '.btn, .ctrl, .icon-btn, .level, .way, .moment, .game-row, .seg button, .nav a, .mv';
 const held = new WeakMap();
 export function installJelly(root = document) {
   root.addEventListener('pointerdown', (e) => {

@@ -759,3 +759,39 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 /* play: look-back banner + compact control labels on phones */
 .pl-banner:empty { display: none; }
 @media (max-width: 640px) { .ctrls .lbl { display: none; } .board-col > .pl-banner { padding-inline: max(16px, env(safe-area-inset-left, 0px)); } }
+
+/* =====================  waves along the bottom of the background  ===================== */
+:root { --wave-1: rgba(118, 183, 166, 0.20); --wave-2: rgba(235, 207, 177, 0.32); --wave-3: rgba(63, 106, 94, 0.13); }
+:root[data-theme="dark"] { --wave-1: rgba(118, 183, 166, 0.10); --wave-2: rgba(31, 44, 74, 0.45); --wave-3: rgba(63, 106, 94, 0.28); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --wave-1: rgba(118, 183, 166, 0.10); --wave-2: rgba(31, 44, 74, 0.45); --wave-3: rgba(63, 106, 94, 0.28); } }
+.bg-waves { position: absolute; left: 0; right: 0; bottom: 0; height: 42vh; pointer-events: none; overflow: hidden; }
+.bg-waves i { position: absolute; left: 0; bottom: 0; width: 200%; will-change: transform;
+  -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x; -webkit-mask-position: left bottom; mask-position: left bottom; }
+.bg-waves .w1 { height: 100%; background: var(--wave-1); -webkit-mask-image: url("../icons/wave-1.svg"); mask-image: url("../icons/wave-1.svg"); -webkit-mask-size: 50% 100%; mask-size: 50% 100%; animation: wave-drift 70s linear infinite; }
+.bg-waves .w2 { height: 80%; background: var(--wave-2); -webkit-mask-image: url("../icons/wave-2.svg"); mask-image: url("../icons/wave-2.svg"); -webkit-mask-size: 50% 100%; mask-size: 50% 100%; animation: wave-drift 52s linear infinite reverse; }
+.bg-waves .w3 { height: 62%; background: var(--wave-3); -webkit-mask-image: url("../icons/wave-3.svg"); mask-image: url("../icons/wave-3.svg"); -webkit-mask-size: 50% 100%; mask-size: 50% 100%; animation: wave-drift 90s linear infinite; }
+@keyframes wave-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+:root[data-motion="off"] .bg-waves i, :root[data-motion="reduced"] .bg-waves i { animation: none; }
+@media (prefers-reduced-motion: reduce) { .bg-waves i { animation: none; } }
+@media (max-width: 640px) { .bg-waves { height: 30vh; } .bg-waves i { animation: none; } }
+
+/* =====================  coaching switches  ===================== */
+.toggle { transition: border-color var(--d-ui) ease, background-color var(--d-ui) ease; }
+.switch { outline: none; }
+.switch::before { transition: translate var(--sp-bouncy-d, 320ms) var(--sp-bouncy, var(--ease-out)), width 180ms var(--ease-out); }
+.switch { transition: background-color 260ms ease, box-shadow 260ms ease; }
+.switch:checked { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 0 0 4px color-mix(in srgb, var(--c-best) 14%, transparent); }
+.switch:active::before { width: 31px; }
+.switch:checked:active::before { translate: 15px 0; }
+:root[data-input="key"] .toggle:focus-within { border-color: var(--accent); box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+
+/* =====================  PC: full-width header, wider pages, bigger board  ===================== */
+@media (min-width: 1100px) {
+  .topbar-in, :root[data-view="play"] .topbar-in, :root[data-view="review"] .topbar-in { max-width: none; padding-left: max(32px, env(safe-area-inset-left, 0px)); padding-right: max(32px, env(safe-area-inset-right, 0px)); }
+}
+@media (min-width: 1440px) {
+  main { max-width: 1560px; }
+  main[data-view="play"], main[data-view="review"] { max-width: none; padding-left: 32px; padding-right: 32px; }
+  .split3 { grid-template-columns: minmax(0, 320px) minmax(0, 1fr) minmax(0, 420px); gap: 40px; }
+  .split3 > .board-col { max-width: min(1000px, calc(100dvh - 200px)); }
+}
