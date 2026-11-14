@@ -127,6 +127,7 @@ export function installJelly(root = document) {
     const press = wide ? '0.985 0.9' : '0.94 0.9';
     held.get(el)?.cancel();
     const a = el.animate([{ scale: '1 1' }, { scale: press }], { duration: 120, easing: EASE_OUT, fill: 'forwards' });
+    if (el.matches('.btn-primary, .btn-ghost, .ctrl')) glint(el);
     held.set(el, a);
     const release = () => {
       window.removeEventListener('pointerup', release);
@@ -143,6 +144,23 @@ export function installJelly(root = document) {
     window.addEventListener('pointerup', release);
     window.addEventListener('pointercancel', release);
   }, { passive: true });
+}
+
+// The gloss streaks on key buttons sweep across, leave on the right and slide back in from the left.
+function glint(el) {
+  const w = el.offsetWidth;
+  const frames = [
+    { translate: '0 0', offset: 0 },
+    { translate: `${w}px 0`, offset: 0.5, easing: 'steps(1, end)' },
+    { translate: '-70px 0', offset: 0.5001 },
+    { translate: '0 0', offset: 1 },
+  ];
+  try {
+    el.animate(frames, { duration: 760, easing: 'cubic-bezier(0.45, 0, 0.2, 1)', pseudoElement: '::before' });
+    el.animate(frames, { duration: 760, delay: 60, easing: 'cubic-bezier(0.45, 0, 0.2, 1)', pseudoElement: '::after' });
+  } catch {
+    /* browsers without pseudo-element animation just skip the glint */
+  }
 }
 
 // ---------- pill that slides between options and squashes while moving ----------
