@@ -798,6 +798,6 @@ main[data-view="play"], main[data-view="review"] { max-width: 1720px; }
 
 /* light mode: warmer, less bright stone base; header follows it */
 :root:not([data-theme="dark"]) .topbar { background: color-mix(in srgb, var(--bg) 90%, transparent); }
-/* waves are a light-mode thing */
-:root[data-theme="dark"] .bg-waves { display: none; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-waves { display: none; } }
+/* dark mode waves: one calm mint-to-forest family, no navy */
+:root[data-theme="dark"] { --wave-1: rgba(169, 215, 200, 0.05); --wave-2: rgba(118, 183, 166, 0.08); --wave-3: rgba(63, 106, 94, 0.22); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --wave-1: rgba(169, 215, 200, 0.05); --wave-2: rgba(118, 183, 166, 0.08); --wave-3: rgba(63, 106, 94, 0.22); } }
