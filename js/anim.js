@@ -115,3 +115,87 @@ export function pop(el, { scale = 0.92 } = {}) {
 }
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------- jelly press: squash down on press, stretch past and settle on release ----------
+const PRESSABLE = '.btn, .ctrl, .icon-btn, .level, .way, .moment, .game-row, .seg button, .nav a, .mv, .toggle';
+const held = new WeakMap();
+export function installJelly(root = document) {
+  root.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest(PRESSABLE);
+    if (!el || !canMove() || el.disabled) return;
+    const wide = el.offsetWidth > el.offsetHeight * 3;
+    const press = wide ? '0.985 0.9' : '0.94 0.9';
+    held.get(el)?.cancel();
+    const a = el.animate([{ scale: '1 1' }, { scale: press }], { duration: 120, easing: EASE_OUT, fill: 'forwards' });
+    held.set(el, a);
+    const release = () => {
+      window.removeEventListener('pointerup', release);
+      window.removeEventListener('pointercancel', release);
+      const p = held.get(el);
+      if (p) p.cancel();
+      held.delete(el);
+      const s = spring(0.45, 0.42);
+      el.animate(
+        [{ scale: press }, { scale: wide ? '1.01 1.06' : '1.05 1.07', offset: 0.28 }, { scale: '0.99 0.985', offset: 0.6 }, { scale: '1 1' }],
+        { duration: Math.max(380, Math.min(520, s.duration)), easing: 'linear' },
+      );
+    };
+    window.addEventListener('pointerup', release);
+    window.addEventListener('pointercancel', release);
+  }, { passive: true });
+}
+
+// ---------- pill that slides between options and squashes while moving ----------
+export function movePill(pill, target, animate = true) {
+  if (!pill || !target || !target.offsetWidth) return;
+  const x = target.offsetLeft, w = target.offsetWidth;
+  const prevX = parseFloat(pill.dataset.x || 'NaN');
+  pill.classList.toggle('still', !animate);
+  pill.style.width = w + 'px';
+  pill.style.transform = `translateX(${x}px)`;
+  pill.dataset.x = x;
+  if (animate && canMove() && !Number.isNaN(prevX) && Math.abs(prevX - x) > 2) {
+    pill.animate(
+      [{ scale: '1 1' }, { scale: '1.14 0.84', offset: 0.32 }, { scale: '0.96 1.05', offset: 0.68 }, { scale: '1 1' }],
+      { duration: 420, easing: EASE_OUT },
+    );
+  }
+  if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.remove('still')));
+}
+
+// ---------- explanation sections slide in as they scroll into view ----------
+let revealer = null;
+function getRevealer() {
+  if (revealer) return revealer;
+  revealer = new IntersectionObserver((entries) => {
+    let k = 0;
+    for (const en of entries) {
+      if (!en.isIntersecting) continue;
+      revealer.unobserve(en.target);
+      revealIt(en.target, k++ * 70);
+    }
+  }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+  return revealer;
+}
+function revealIt(el, delay) {
+  el.classList.remove('rv-hide');
+  if (!canFade()) return;
+  el.animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 260, delay, easing: EASE_OUT, fill: 'backwards' });
+  if (canMove()) {
+    const s = spring(0.7, 0.5);
+    el.animate([{ transform: 'translateY(26px) scale(0.96)', transformOrigin: 'top center' }, { transform: 'none', transformOrigin: 'top center' }], { duration: s.duration, delay, easing: s.easing, fill: 'backwards' });
+  }
+}
+// Sections already on screen cascade in now; the rest wait until scrolled to.
+export function revealSections(container) {
+  if (!container) return;
+  const items = [...container.querySelectorAll(':scope > .card > *')];
+  if (!canFade() || !('IntersectionObserver' in window)) return;
+  const vh = window.innerHeight;
+  let k = 0;
+  for (const el of items) {
+    const r = el.getBoundingClientRect();
+    if (r.top < vh * 0.94 && r.bottom > 0) revealIt(el, k++ * 60);
+    else { el.classList.add('rv-hide'); getRevealer().observe(el); }
+  }
+}

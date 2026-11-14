@@ -47,7 +47,7 @@ export function renderText(str) {
     bump(key);
     const isPro = (seen[key] || 0) > PRO_AFTER && pro;
     if (isPro) return `<button type="button" class="term" data-term="${key}">${pro}</button>`;
-    const sameWord = plain.toLowerCase() === t.term.toLowerCase();
+    const sameWord = plain.toLowerCase().slice(0, 4) === t.term.toLowerCase().slice(0, 4);
     if (sameWord) return `<button type="button" class="term" data-term="${key}">${plain}</button>`;
     return `${plain} <button type="button" class="term term--chip" data-term="${key}">${t.term}</button>`;
   });

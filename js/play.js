@@ -2,15 +2,16 @@
 import { Chess } from '../vendor/chess.js';
 import { Board } from './board.js';
 import { engine } from './engine.js';
-import { explainMove, scoreToCp, isBad, moveFacts } from './explain.js';
+import { scoreToCp, isBad, moveFacts, TONE } from './explain.js';
+import { explainAsync } from './explainer.js';
 import { loosePieces, threatsBy, NAME, other } from './chessutil.js';
 import { renderCard, badge } from './card.js';
 import { renderText } from './glossary.js';
 import { icon } from './icons.js';
-import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT } from './anim.js';
+import { staggerIn, swapIn, pop, shake, wait, canMove, canFade, spring, EASE_OUT, revealSections } from './anim.js';
 import { store } from './store.js';
 import { haptic } from './haptics.js';
-import { paintEval } from './evalbar.js';
+import { paintEval, resetEval } from './evalbar.js';
 
 // Elo numbers are approximate. Up to Intermediate the bot is weakened by hand
 // (shallow search + picking among several candidate moves, with occasional
@@ -43,8 +44,8 @@ export function mountPlay(root, { onReview }) {
         <div class="sec"><h4>Your color</h4><div class="seg" role="group" aria-label="Your color" id="colors" style="max-width:360px">
           <button type="button" data-c="w">White</button><button type="button" data-c="r">Random</button><button type="button" data-c="b">Black</button></div></div>
         <div class="sec"><h4>Coaching</h4><div class="toggles">
-          <label class="toggle" for="opt-safety"><input type="checkbox" id="opt-safety"><div><b>Safety net</b><span>Before a move that hangs a piece or allows mate, you get a warning and a chance to take it back.</span></div></label>
-          <label class="toggle" for="opt-grades"><input type="checkbox" id="opt-grades"><div><b>Live grades</b><span>Every move you make is graded and explained right after you play it.</span></div></label>
+          <label class="toggle" for="opt-safety"><input type="checkbox" class="switch" role="switch" id="opt-safety"><div><b>Safety net</b><span>Before a move that hangs a piece or allows mate, you get a warning and a chance to take it back.</span></div></label>
+          <label class="toggle" for="opt-grades"><input type="checkbox" class="switch" role="switch" id="opt-grades"><div><b>Live grades</b><span>Every move you make is graded and explained right after you play it.</span></div></label>
         </div></div>
         <div class="row"><button type="button" class="btn btn-primary" id="pl-start">${icon('play')}Start game</button></div>
       </div>
@@ -62,7 +63,7 @@ export function mountPlay(root, { onReview }) {
       <div class="player" data-p="bottom"></div>
       <div class="ctrls">
         <button class="ctrl" id="pl-hint">${icon('hint')}Hint</button>
-        <button class="ctrl" id="pl-undo">${icon('undo')}Take back</button>
+        <button class="ctrl" id="pl-undo">${icon('undo')}Undo</button>
         <button class="ctrl" id="pl-flip" aria-label="Flip board">${icon('flip')}</button>
         <button class="ctrl" id="pl-resign">${icon('flag')}Resign</button>
       </div>
@@ -80,7 +81,8 @@ export function mountPlay(root, { onReview }) {
   board.setPosition(new Chess().fen(), { animate: false });
 
   // ----- setup -----
-  $('#levels').innerHTML = LEVELS.map((l) => `<button type="button" class="level" data-l="${l.id}" aria-pressed="${l.id === st.level}"><b>${l.name}</b><span>≈ ${l.elo}</span></button>`).join('');
+  const LV_PC = ['wP', 'wP', 'wN', 'wB', 'wR', 'wR', 'wQ', 'wK', 'bK'];
+  $('#levels').innerHTML = LEVELS.map((l, i) => `<button type="button" class="level" data-l="${l.id}" aria-pressed="${l.id === st.level}"><span class="lv-pc pc-${LV_PC[i]}"></span><b>${l.name}</b><span>≈ ${l.elo}</span><span class="meter" aria-hidden="true">${LEVELS.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</span></button>`).join('');
   root.querySelectorAll('[data-l]').forEach((b) => b.addEventListener('click', () => {
     st.level = b.dataset.l;
     root.querySelectorAll('[data-l]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
@@ -122,8 +124,7 @@ export function mountPlay(root, { onReview }) {
     board.setMarks({ last: null, good: null, bad: null });
     board.clearBadge();
     $('#pl-opp').hidden = true;
-    evalEl().querySelector('.evalbar-w').style.transform = 'scaleY(0.5)';
-    evalEl().querySelector('.evalbar-n').textContent = '';
+    resetEval(evalEl());
     setPlayers();
     renderMoves();
     coach(`<div class="card"><span class="eyebrow">Game on</span><p style="margin:0">You're playing ${st.user === 'w' ? 'White' : 'Black'} against <b>${esc(level().name)}</b> (≈ ${level().elo}). ${st.user === 'w' ? 'Your move.' : 'The bot moves first.'}</p></div>`);
@@ -135,6 +136,12 @@ export function mountPlay(root, { onReview }) {
   }
 
   const evalEl = () => root.querySelector('.pl-game .evalbar');
+  // deep analysis plus a quick shallow search (used to spot "Magnus" moves)
+  async function analyzeFull(fen) {
+    const a = await engine().analyze(fen, { depth: 12, multipv: 2 });
+    try { a.shallow = (await engine().analyze(fen, { depth: 4, multipv: 1 })).bestmove; } catch { /* optional */ }
+    return a;
+  }
   function showEval(fen, analysis) { paintEval(evalEl(), fen, analysis, st.user === 'b'); }
 
   function setPlayers() {
@@ -146,7 +153,7 @@ export function mountPlay(root, { onReview }) {
   function coach(html, animate = true) {
     const el = $('#pl-coach');
     el.innerHTML = html;
-    if (animate) swapIn(el.firstElementChild);
+    if (animate) revealSections(el);
     wireTerms(el);
   }
   function wireTerms() { /* term taps are handled globally in main.js */ }
@@ -155,7 +162,7 @@ export function mountPlay(root, { onReview }) {
     if (st.over) return;
     const fen = st.chess.fen();
     st.hintStage = 0;
-    st.turnAnalysis = engine().analyze(fen, { depth: 12, multipv: 2 }).catch(() => null);
+    st.turnAnalysis = analyzeFull(fen).catch(() => null);
     const token = st.token;
     st.turnAnalysis.then((a) => {
       if (!a || token.cancelled || st.chess.fen() !== fen) return;
@@ -255,13 +262,15 @@ export function mountPlay(root, { onReview }) {
     if (!before || token.cancelled) return;
     let after;
     const fenAfter = st.chess.fen();
-    try { after = await engine().analyze(fenAfter, { depth: 12, multipv: 2 }); } catch { return; }
+    try { after = await analyzeFull(fenAfter); } catch { return; }
     if (token.cancelled) return;
     st.afterUser = { fen: fenAfter, analysis: after };
     showEval(fenAfter, after);
     const hist = st.chess.history({ verbose: true });
     const pm = hist[hist.length - 2];
-    const card = explainMove({ fen: fenBefore, uci, ply, before, after, prevUci: pm ? pm.from + pm.to : null });
+    let card;
+    try { card = await explainAsync({ fen: fenBefore, uci, ply, before, after, prevUci: pm ? pm.from + pm.to : null }); } catch { return; }
+    if (token.cancelled) return;
     st.grades_[ply] = card;
     if (!st.grades) return;
     paintGrade(ply, card);
@@ -275,12 +284,14 @@ export function mountPlay(root, { onReview }) {
     if (isBad(card.cls)) shake($('#pl-coach .badge'));
   }
 
-  function gradeBot(p, after) {
+  async function gradeBot(p, after) {
     if (!st.grades) return;
+    const token = st.token;
     const hist = st.chess.history({ verbose: true });
     const pm = hist[hist.length - 2];
     let card;
-    try { card = explainMove({ fen: p.fen, uci: p.uci, ply: p.ply, before: p.before, after, prevUci: pm ? pm.from + pm.to : null }); } catch { return; }
+    try { card = await explainAsync({ fen: p.fen, uci: p.uci, ply: p.ply, before: p.before, after, prevUci: pm ? pm.from + pm.to : null }); } catch { return; }
+    if (token.cancelled || st.chess.history().length !== p.ply + 1) return;
     st.grades_[p.ply] = card;
     paintGrade(p.ply, card);
     board.setBadge(p.uci.slice(2, 4), card.cls, { delay: 40 });
@@ -406,9 +417,9 @@ export function mountPlay(root, { onReview }) {
   function paintGrade(ply, c) {
     const b = root.querySelector(`.mv[data-ply="${ply}"]`);
     if (!b) return;
-    const tone = { great: 'great', best: 'best', excellent: 'good', good: 'good', inaccuracy: 'inacc', mistake: 'mistake', blunder: 'blunder', forced: 'good' }[c.cls];
+    const tone = TONE[c.cls] || 'good';
     b.classList.add(`t-${tone}`);
-    const q = { great: '!', inaccuracy: '?!', mistake: '?', blunder: '??' }[c.cls];
+    const q = { magnus: 'M', brilliant: '!!', great: '!', inaccuracy: '?!', mistake: '?', miss: '✕', blunder: '??' }[c.cls];
     if (q && !b.querySelector('.q')) b.insertAdjacentHTML('beforeend', `<span class="q">${q}</span>`);
   }
   function updateCaptured() {

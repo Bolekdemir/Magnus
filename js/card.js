@@ -1,5 +1,5 @@
 // Renders an explanation card (from explain.js) to HTML.
-import { CLASSES, isBad, assess } from './explain.js';
+import { CLASSES, isBad, assess, TONE } from './explain.js';
 import { renderText } from './glossary.js';
 import { icon } from './icons.js';
 
@@ -7,7 +7,8 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 export function badge(cls) {
   const c = CLASSES[cls] || CLASSES.good;
-  return `<span class="badge t-${c.tone}"><i>${c.short}</i>${c.label}</span>`;
+  const glyph = cls === 'magnus' ? icon('crown') : c.short;
+  return `<span class="badge t-${c.tone}"><i>${glyph}</i>${c.label}</span>`;
 }
 
 function list(items, cls, title, ic) {
@@ -27,6 +28,9 @@ export function renderCard(card, opts = {}) {
   const bad = isBad(card.cls);
   let html = `<div class="card-head">${badge(card.cls)}<span class="card-move">${esc(opts.moveLabel || card.san)}</span>${opts.evalText ? `<span class="card-eval">${esc(opts.evalText)}</span>` : ''}</div>`;
 
+  if (card.special) {
+    html += `<div class="special-box t-${(CLASSES[card.cls] || {}).tone || 'great'}">${icon(card.cls === 'magnus' ? 'crown' : card.cls === 'brilliant' ? 'lightning' : 'star')}<p>${renderText(card.special)}</p></div>`;
+  }
   if (bad && card.why.length) {
     html += `<div class="why-box sec why"><h4>${icon('warn')}Why it doesn't work</h4><ul>${card.why.map((t) => `<li>${renderText(t)}</li>`).join('')}</ul></div>`;
   }

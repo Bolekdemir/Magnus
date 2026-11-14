@@ -1,9 +1,11 @@
 // Chessboard view: animated pieces, drag + click moves, arrows, square marks.
 import { Chess } from '../vendor/chess.js';
 import { spring, canMove, canFade, EASE_OUT, squash } from './anim.js';
+import { icon } from './icons.js';
 
 // Move-quality badge glyphs and tones (shown on the destination square).
 export const BADGE = {
+  magnus: ['M', 'magnus'], brilliant: ['!!', 'brilliant'], miss: ['✕', 'mistake'],
   great: ['!', 'great'], best: ['★', 'best'], excellent: ['✓', 'good'], good: ['✓', 'good'], forced: ['•', 'good'],
   inaccuracy: ['?!', 'inacc'], mistake: ['?', 'mistake'], blunder: ['??', 'blunder'],
 };
@@ -346,11 +348,13 @@ export class Board {
     const cell = document.createElement('div');
     cell.className = 'b-badge-cell';
     cell.style.transform = `translate(${col * 100}%, ${row * 100}%)`;
-    cell.innerHTML = `<span class="b-badge t-${g[1]}" title="${cls}">${g[0]}</span>`;
+    const glyph = cls === 'magnus' ? icon('crown') : g[0];
+    cell.innerHTML = `<span class="b-badge t-${g[1]}" title="${cls}">${glyph}</span>`;
     this.badgeLayer.appendChild(cell);
     const b = cell.firstElementChild;
     if (animate && canMove()) {
       const s = spring(0.55, 0.42);
+      if (cls === 'magnus' || cls === 'brilliant') b.classList.add('b-badge-special');
       b.animate([{ transform: 'scale(0.2) rotate(-25deg)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: s.duration, easing: s.easing, delay, fill: 'backwards' });
     } else if (animate && canFade()) {
       b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay, fill: 'backwards' });

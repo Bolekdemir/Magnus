@@ -2,10 +2,11 @@
 import { Chess } from '../vendor/chess.js';
 import { Board } from './board.js';
 import { engine } from './engine.js';
-import { explainMove, winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify } from './explain.js';
+import { winPct, scoreToCp, fmtScore, isBad, CAUSE_LABEL, moveFacts, classify, TONE } from './explain.js';
+import { explainAsync } from './explainer.js';
 import { renderCard, badge, steps } from './card.js';
 import { icon } from './icons.js';
-import { staggerIn, swapIn, shake, pop, wait, canMove } from './anim.js';
+import { staggerIn, swapIn, shake, pop, wait, canMove, revealSections } from './anim.js';
 import { store } from './store.js';
 import { renderText } from './glossary.js';
 import { haptic } from './haptics.js';
@@ -162,35 +163,42 @@ export function mountReview(root) {
       return;
     }
     await eng.newGame();
+    const builds = [];
     for (let i = 0; i < g.fens.length; i++) {
       if (token.cancelled) return;
       const pos = new Chess(g.fens[i]);
       let res;
       if (pos.isGameOver()) res = { lines: [], terminal: true };
       else {
-        try { res = await eng.analyze(g.fens[i], { depth: 14, multipv: 2, token }); } catch { return; }
+        try {
+          res = await eng.analyze(g.fens[i], { depth: 14, multipv: 2, token });
+          res.shallow = (await eng.analyze(g.fens[i], { depth: 4, multipv: 1, token })).bestmove;
+        } catch { return; }
       }
       if (token.cancelled) return;
       g.analysis[i] = res;
-      if (i > 0) buildCard(i - 1);
+      if (i > 0) builds.push(buildCard(i - 1));
       updateProgress(i + 1, g.fens.length);
     }
+    await Promise.all(builds);
+    if (token.cancelled) return;
     g.done = true;
     renderSummary();
     const yourMistakes = g.cards.filter((c, i) => c && g.moves[i].color === state.side && isBad(c.cls) && c.cls !== 'inaccuracy');
     recordGame(g.fens.length + ':' + g.moves.map((m) => m.san).join(''), yourMistakes.map((c) => c.cause).filter(Boolean), accuracyFor(state.side));
   }
 
-  function buildCard(i) {
+  async function buildCard(i) {
     const g = state.game;
     const m = g.moves[i];
     try {
       const pm = g.moves[i - 1];
-      g.cards[i] = explainMove({ fen: g.fens[i], uci: m.from + m.to + (m.promotion || ''), ply: i, before: g.analysis[i], after: g.analysis[i + 1], prevUci: pm ? pm.from + pm.to : null });
+      g.cards[i] = await explainAsync({ fen: g.fens[i], uci: m.from + m.to + (m.promotion || ''), ply: i, before: g.analysis[i], after: g.analysis[i + 1], prevUci: pm ? pm.from + pm.to : null });
     } catch (e) {
       console.error(e);
       g.cards[i] = null;
     }
+    if (state.game !== g) return;
     paintMove(i);
     if (state.idx === i + 1) renderCurrent(false);
   }
@@ -256,9 +264,9 @@ export function mountReview(root) {
     const c = state.game.cards[i];
     const b = root.querySelector(`.mv[data-i="${i + 1}"]`);
     if (!b || !c) return;
-    const tone = { great: 'great', best: 'best', excellent: 'good', good: 'good', inaccuracy: 'inacc', mistake: 'mistake', blunder: 'blunder', forced: 'good' }[c.cls];
+    const tone = TONE[c.cls] || 'good';
     b.className = `mv t-${tone}`;
-    const q = { great: '!', inaccuracy: '?!', mistake: '?', blunder: '??' }[c.cls];
+    const q = { magnus: 'M', brilliant: '!!', great: '!', inaccuracy: '?!', mistake: '?', miss: '✕', blunder: '??' }[c.cls];
     b.innerHTML = `${esc(c.san)}${q ? `<span class="q">${q}</span>` : ''}`;
     if (state.idx === i + 1) b.setAttribute('aria-current', 'true');
   }
@@ -317,7 +325,7 @@ export function mountReview(root) {
     if (pos.isCheckmate()) ev = 'Checkmate';
     else if (a?.lines?.[0]) ev = 'Eval ' + fmtScore(a.lines[0].score, pos.turn() === 'w' ? 1 : -1);
     el.innerHTML = `<div class="card">${renderCard(card, { moveLabel: `${moveNo(i)} ${card.san}`, evalText: ev, actions: { punish: true, better: true, retry: g.moves[i].color === state.side || true } })}</div>`;
-    if (animate) swapIn(el.firstElementChild, { duration: 180 });
+    if (animate) revealSections(el);
     wireCard(el, i);
     // arrows: what was played, what was best, what the opponent threatens
     const m = g.moves[i];
@@ -418,7 +426,7 @@ export function mountReview(root) {
         const isBest = uci === before.lines[0].pv[0];
         const cls = classify({ bestWp, playedWp: wp, isBest, secondWp: null, legalCount: 2 });
         const pm = g.moves[i - 1];
-        const card = explainMove({ fen, uci, ply: i, before, after, prevUci: pm ? pm.from + pm.to : null });
+        const card = await explainAsync({ fen, uci, ply: i, before, after, prevUci: pm ? pm.from + pm.to : null });
         const el = $('#rv-card');
         if (!isBad(cls)) {
           haptic('success');

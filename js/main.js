@@ -5,7 +5,7 @@ import { mountPlay } from './play.js';
 import { icon } from './icons.js';
 import { store } from './store.js';
 import { termInfo } from './glossary.js';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring } from './anim.js';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js';
 import { topPatterns } from './profile.js';
 import { hapticsEnabled, setHaptics } from './haptics.js';
 import { engine } from './engine.js';
@@ -37,11 +37,22 @@ function syncSeg(seg, animate = true) {
   }
   if (!btn || !btn.offsetWidth) { pill.style.opacity = btn ? pill.style.opacity : '0'; return; }
   pill.style.opacity = '1';
-  pill.classList.toggle('still', !animate);
-  pill.style.width = btn.offsetWidth + 'px';
-  pill.style.transform = `translateX(${btn.offsetLeft}px)`;
-  if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.remove('still')));
+  movePill(pill, btn, animate);
 }
+installJelly();
+
+// nav: the same sliding pill under the current page
+const navEl = document.querySelector('.nav');
+const navPill = document.createElement('span');
+navPill.className = 'nav-pill still';
+navPill.setAttribute('aria-hidden', 'true');
+navEl.prepend(navPill);
+function syncNav(animate) {
+  const cur = navEl.querySelector('a[aria-current="page"]');
+  navPill.style.opacity = cur ? '1' : '0';
+  if (cur) movePill(navPill, cur, animate && navPill.dataset.x !== undefined);
+}
+window.addEventListener('resize', () => syncNav(false));
 function syncAllSegs(animate = false) { document.querySelectorAll('.seg').forEach((s) => syncSeg(s, animate)); }
 new MutationObserver((muts) => {
   const touched = new Set();
@@ -155,7 +166,7 @@ function go(name, { push = true } = {}) {
   const el = views[name];
   if (canFade()) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: EASE_OUT });
   if (canMove()) { const s = spring(0.8, 0.42); el.animate([{ transform: 'translateY(14px)' }, { transform: 'none' }], { duration: s.duration, easing: s.easing }); }
-  requestAnimationFrame(() => syncAllSegs(false));
+  requestAnimationFrame(() => { syncAllSegs(false); syncNav(true); });
   hideTip();
 }
 document.querySelectorAll('[data-view]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); go(a.dataset.view); }));
