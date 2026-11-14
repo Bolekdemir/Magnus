@@ -100,7 +100,7 @@ export function mountReview(root) {
 
   function cancel() {
     if (state.token) state.token.cancelled = true;
-    if (state.preview) state.preview.cancelled = true;
+    stopPreview();
     state.mode = null;
   }
 
@@ -241,7 +241,7 @@ export function mountReview(root) {
       : `<p class="empty-note">No mistakes from you in this game. Nicely played.</p>`;
     el.innerHTML = `<div class="acc-row"><div class="acc ${you === 'w' ? 'you' : ''}"><span>White accuracy</span><strong>${acc('w')}</strong></div><div class="acc ${you === 'b' ? 'you' : ''}"><span>Black accuracy</span><strong>${acc('b')}</strong></div></div><div class="tally">${tally}</div>${moments}`;
     staggerIn(el.children, { step: 50 });
-    el.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => { goto(+b.dataset.goto); revealBoard(); }));
+    el.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', async () => { await revealBoard(); goto(+b.dataset.goto); }));
     void opp;
   }
 
@@ -258,7 +258,7 @@ export function mountReview(root) {
     });
     if (g.moves.length % 2) html += '<span></span>';
     el.innerHTML = html;
-    el.querySelectorAll('.mv').forEach((b) => b.addEventListener('click', () => goto(+b.dataset.i)));
+    el.querySelectorAll('.mv').forEach((b) => b.addEventListener('click', async () => { await revealBoard(); goto(+b.dataset.i); }));
   }
   function paintMove(i) {
     const c = state.game.cards[i];
@@ -276,7 +276,7 @@ export function mountReview(root) {
     const g = state.game;
     if (!g) return;
     idx = Math.max(0, Math.min(g.moves.length, idx));
-    if (state.preview) state.preview.cancelled = true;
+    stopPreview();
     if (state.mode === 'retry') endRetry();
     state.idx = idx;
     board.setInteractive(null);
@@ -337,56 +337,119 @@ export function mountReview(root) {
   }
 
   // On phones the card sits below the board; bring the board back into view for board actions.
+  // Bring the board fully into view (below the sticky header), and resolve once scrolling has settled.
   function revealBoard() {
-    const r = $('.rv-board').getBoundingClientRect();
-    if (r.top < 70 || r.bottom > innerHeight) {
-      root.querySelector('.rv-main .board-col').scrollIntoView({ behavior: canMove() ? 'smooth' : 'auto', block: 'start' });
-    }
+    return new Promise((resolve) => {
+      const col = root.querySelector('.rv-main .board-col');
+      if (!col) return resolve(false);
+      const head = document.querySelector('.topbar')?.getBoundingClientRect().bottom || 0;
+      const top = col.getBoundingClientRect().top;
+      const boardBottom = $('.rv-board').getBoundingClientRect().bottom;
+      if (top >= head - 2 && boardBottom <= innerHeight + 2) return resolve(false);
+      window.scrollTo({ top: Math.max(0, scrollY + top - head - 8), behavior: canMove() ? 'smooth' : 'auto' });
+      let last = -1, still = 0;
+      const t0 = performance.now();
+      const check = () => {
+        const y = scrollY;
+        still = Math.abs(y - last) < 1 ? still + 1 : 0;
+        last = y;
+        if (still >= 4 || performance.now() - t0 > 1000) resolve(true);
+        else requestAnimationFrame(check);
+      };
+      requestAnimationFrame(check);
+    });
   }
 
   function wireCard(el, i) {
-    el.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
+    el.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', async () => {
       const act = b.dataset.act;
-      revealBoard();
       const card = state.game.cards[i];
+      await revealBoard();
+      if (state.idx !== i + 1 && act !== 'retry') return; // the user moved on while we scrolled
       if (act === 'punish') playLine(state.game.fens[i + 1], state.game.analysis[i + 1].lines[0].pv.slice(0, card.soon.steps.length), isBad(card.cls) ? 'The punishment' : 'Best play from here');
       if (act === 'better') playLine(state.game.fens[i], [card.bestUci, ...(state.game.analysis[i].lines[0].pv.slice(1, card.better.line.steps.length))], `What ${card.better.san} leads to`);
       if (act === 'retry') startRetry(i);
     }));
   }
 
-  // ---------- line preview ----------
-  async function playLine(fen, pv, title) {
-    if (state.preview) state.preview.cancelled = true;
-    const token = { cancelled: false };
+  // ---------- line player: step back and forth through a line, or let it play ----------
+  const START_DELAY = 1000;
+  const STEP_DELAY = 1200;
+  function stopPreview() {
+    if (!state.preview) return;
+    state.preview.cancelled = true;
+    clearTimeout(state.preview.timer);
+    state.preview = null;
+  }
+
+  function playLine(fen, pv, title) {
+    stopPreview();
+    const token = { cancelled: false, paused: false, k: 0, timer: null };
     state.preview = token;
     const banner = $('.rv-banner');
     board.setArrows([]);
     board.clearBadge();
-    board.setPosition(fen, { animate: false });
+    // every position along the line, so we can jump anywhere
     const c = new Chess(fen);
-    const total = pv.length;
-    const show = (k, san) => {
-      banner.innerHTML = `<div class="banner">${icon('play')}<span><b>${esc(title)}</b>${san ? ` <span class="mono">${esc(san)}</span>` : ''} <span style="opacity:.7">${k}/${total}</span></span><button type="button" class="btn btn-ghost btn-sm" data-exit>Back to game</button></div>`;
-      banner.querySelector('[data-exit]').addEventListener('click', () => { token.cancelled = true; goto(state.idx, false); });
-    };
-    show(0, '');
-    await wait(350);
-    for (let k = 0; k < pv.length; k++) {
-      if (token.cancelled) return;
+    const steps = [{ fen, move: null }];
+    for (const u of pv) {
       let m;
-      try { m = c.move({ from: pv[k].slice(0, 2), to: pv[k].slice(2, 4), promotion: pv[k][4] }); } catch { break; }
-      board.setPosition(c.fen(), { animate: true });
-      board.setMarks({ last: [m.from, m.to] });
-      show(k + 1, m.san);
-      await wait(canMove() ? 900 : 1100);
+      try { m = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] || undefined }); } catch { break; }
+      steps.push({ fen: c.fen(), move: m });
     }
+    const total = steps.length - 1;
+    const mover = new Chess(fen).turn();
+
+    const paint = () => {
+      const k = token.k;
+      const playing = !token.paused && k < total;
+      banner.innerHTML = `<div class="line-player">
+        <div class="lp-head">${icon('play')}<b>${esc(title)}</b><span class="lp-count mono">${k}/${total}</span></div>
+        <div class="lp-moves">${steps.slice(1).map((st, n) => `<button type="button" class="lp-mv ${st.move.color === mover ? 'theirs' : 'mine'}" data-k="${n + 1}" ${n + 1 === k ? 'aria-current="true"' : ''}>${esc(st.move.san)}</button>`).join('')}</div>
+        <div class="lp-ctrls">
+          <button type="button" class="ctrl" data-lp="prev" aria-label="Previous move in line" ${k === 0 ? 'disabled' : ''}>${icon('prev')}</button>
+          <button type="button" class="ctrl" data-lp="play" aria-label="${playing ? 'Pause' : 'Play'}">${icon(playing ? 'pause' : 'play')}</button>
+          <button type="button" class="ctrl" data-lp="next" aria-label="Next move in line" ${k === total ? 'disabled' : ''}>${icon('next')}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-exit>Back to game</button>
+        </div></div>`;
+      banner.querySelector('[data-exit]').addEventListener('click', () => { stopPreview(); goto(state.idx, false); });
+      banner.querySelectorAll('[data-lp]').forEach((b) => b.addEventListener('click', () => control(b.dataset.lp)));
+      banner.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => { token.paused = true; clearTimeout(token.timer); show(+b.dataset.k); }));
+    };
+    const show = (k, animate = true) => {
+      token.k = Math.max(0, Math.min(total, k));
+      const st = steps[token.k];
+      board.setPosition(st.fen, { animate });
+      board.setMarks({ last: st.move ? [st.move.from, st.move.to] : null, good: null, bad: null });
+      paint();
+    };
+    const tick = () => {
+      if (token.cancelled || token.paused) return;
+      if (token.k < total) show(token.k + 1);
+      if (token.k < total) token.timer = setTimeout(tick, STEP_DELAY);
+      else { token.paused = true; paint(); }
+    };
+    const control = (what) => {
+      if (token.cancelled) return;
+      clearTimeout(token.timer);
+      if (what === 'prev') { token.paused = true; show(token.k - 1); }
+      else if (what === 'next') { token.paused = true; show(token.k + 1); }
+      else if (what === 'play') {
+        if (!token.paused && token.k < total) { token.paused = true; paint(); return; }
+        token.paused = false;
+        if (token.k >= total) { show(0); token.timer = setTimeout(tick, START_DELAY * 0.7); }
+        else { paint(); token.timer = setTimeout(tick, 450); }
+      }
+    };
+    token.control = control;
+    show(0, false);
+    token.timer = setTimeout(tick, START_DELAY);
   }
 
   // ---------- retry: find a better move ----------
   function startRetry(i) {
     const g = state.game;
-    if (state.preview) state.preview.cancelled = true;
+    stopPreview();
     state.mode = 'retry';
     state.retryIdx = i;
     const fen = g.fens[i];
@@ -478,6 +541,12 @@ export function mountReview(root) {
   const onKey = (e) => {
     if (root.hidden || !state.game || $('.rv-main').hidden) return;
     if (e.target.closest('textarea, input')) return;
+    if (state.preview?.control) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); state.preview.control('prev'); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); state.preview.control('next'); return; }
+      if (e.key === ' ') { e.preventDefault(); state.preview.control('play'); return; }
+      if (e.key === 'Escape') { stopPreview(); goto(state.idx, false); return; }
+    }
     if (e.key === 'ArrowLeft') { e.preventDefault(); goto(state.idx - 1, true); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); goto(state.idx + 1, true); }
     else if (e.key === 'Home') goto(0, false);

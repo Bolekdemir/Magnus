@@ -647,3 +647,20 @@ html { background: var(--bg); }
   .panel, .way:not(.feature) { backdrop-filter: blur(10px) saturate(140%); -webkit-backdrop-filter: blur(10px) saturate(140%); }
   .bg-glow { animation: none; }
 }
+
+/* line player (punishment / better line) */
+.line-player { display: grid; gap: 10px; padding: 12px; border-radius: 16px; background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); box-shadow: var(--shadow); }
+.lp-head { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.lp-head .ic { color: var(--accent); }
+.lp-count { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+.lp-moves { display: flex; flex-wrap: wrap; gap: 6px; }
+.lp-mv { border: 0; cursor: pointer; padding: 5px 10px; border-radius: 9px; background: var(--surface-2); color: var(--fg); font-family: var(--f-mono); font-weight: 650; font-size: 13px;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
+.lp-mv.theirs { box-shadow: inset 2px 0 0 var(--c-mistake); }
+.lp-mv.mine { box-shadow: inset 2px 0 0 var(--c-best); }
+.lp-mv[aria-current="true"] { background: var(--accent); color: var(--bg); }
+.lp-ctrls { display: flex; gap: 8px; align-items: center; }
+.lp-ctrls .ctrl { min-width: 52px; height: 42px; }
+.lp-ctrls .btn { margin-left: auto; }
+@media (max-width: 640px) { .rv-banner .line-player { margin-inline: 0; } .lp-ctrls .ctrl { flex: 1; } }
