@@ -1,0 +1,443 @@
+// Turns engine numbers + board facts into plain-language explanations.
+// Text uses glossary markers: [[key|plain phrase|pro phrase]] (see glossary.js).
+import {
+  Chess, VAL, NAME, other, seeOn, loosePieces, threatsBy, forkFrom, lineTacticFrom,
+  discoveredAfter, features, playUci, balance, moveUci, uciToSan,
+} from './chessutil.js';
+
+// ---------- scores ----------
+export function scoreToCp(s) {
+  if (!s) return 0;
+  if (s.mate != null) return s.mate > 0 ? 10000 - s.mate * 10 : -10000 - s.mate * 10;
+  return s.cp;
+}
+export function winPct(cp) {
+  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+}
+export function moveAccuracy(loss) {
+  return Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * loss) - 3.1669));
+}
+export function fmtScore(s, pov = 1) {
+  if (!s) return '0.0';
+  if (s.mate != null) {
+    const m = s.mate * pov;
+    return (m > 0 ? '+' : '-') + 'M' + Math.abs(m);
+  }
+  const v = (s.cp * pov) / 100;
+  return (v > 0 ? '+' : '') + v.toFixed(1);
+}
+
+export const CLASSES = {
+  great: { label: 'Great find', short: '!', tone: 'great' },
+  best: { label: 'Best move', short: '★', tone: 'best' },
+  excellent: { label: 'Excellent', short: '✓', tone: 'good' },
+  good: { label: 'Good', short: '✓', tone: 'good' },
+  inaccuracy: { label: 'Inaccuracy', short: '?!', tone: 'inacc' },
+  mistake: { label: 'Mistake', short: '?', tone: 'mistake' },
+  blunder: { label: 'Blunder', short: '??', tone: 'blunder' },
+  forced: { label: 'Only legal move', short: '•', tone: 'good' },
+};
+
+export function classify({ bestWp, playedWp, isBest, secondWp, legalCount }) {
+  if (legalCount === 1) return 'forced';
+  const loss = Math.max(0, bestWp - playedWp);
+  if (isBest) {
+    if (secondWp != null && bestWp - secondWp > 18 && bestWp > 35 && bestWp < 97) return 'great';
+    return 'best';
+  }
+  if (loss <= 2) return 'excellent';
+  if (loss <= 5) return 'good';
+  if (loss <= 10) return 'inaccuracy';
+  if (loss <= 20) return 'mistake';
+  return 'blunder';
+}
+
+const BAD = new Set(['inaccuracy', 'mistake', 'blunder']);
+export const isBad = (cls) => BAD.has(cls);
+
+// ---------- wording helpers ----------
+const your = (p, sq) => `your ${NAME[p]} on ${sq}`;
+const their = (p, sq) => `the ${NAME[p]} on ${sq}`;
+const pts = (n) => `${n} point${n === 1 ? '' : 's'}`;
+function worth(n) {
+  if (n >= 9) return 'about a queen';
+  if (n >= 5) return 'about a rook';
+  if (n >= 3) return 'about a piece';
+  if (n >= 2) return 'two pawns';
+  return 'a pawn';
+}
+export function assess(wp) {
+  if (wp >= 97) return 'winning outright';
+  if (wp >= 80) return 'clearly better';
+  if (wp >= 62) return 'a bit better';
+  if (wp > 38) return 'about equal';
+  if (wp > 20) return 'a bit worse';
+  if (wp > 3) return 'clearly worse';
+  return 'lost';
+}
+
+// ---------- facts about a single move ----------
+// Returns {gains:[], costs:[], tags:Set, sacrifice:bool}
+export function moveFacts(fenBefore, uci, plyIndex = 20) {
+  const before = new Chess(fenBefore);
+  const c = before.turn();
+  const opp = other(c);
+  let move;
+  const after = new Chess(fenBefore);
+  try {
+    move = after.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
+  } catch {
+    return { gains: [], costs: [], tags: new Set(), move: null };
+  }
+  const gains = [];
+  const costs = [];
+  const tags = new Set();
+  const moveNo = Math.floor(plyIndex / 2) + 1;
+
+  if (after.isCheckmate()) {
+    gains.push('Checkmate. The game is over.');
+    tags.add('mate');
+    return { gains, costs, tags, move, after };
+  }
+
+  // Captures and exchanges
+  let sacrifice = false;
+  if (move.captured) {
+    const victim = VAL[move.captured] + (move.promotion ? VAL[move.promotion] - 1 : 0);
+    const back = seeOn(after, move.to); // what the opponent wins back on that square
+    const net = victim - back;
+    if (net > 0 && back === 0) gains.push(`Wins ${their(move.captured, move.to)} for free.`), tags.add('wins-material');
+    else if (net > 0) gains.push(`Takes ${their(move.captured, move.to)} and comes out ahead in the [[exchange|trade|exchange]] (+${net}).`), tags.add('wins-material');
+    else if (net === 0) gains.push(`Trades: takes ${their(move.captured, move.to)}, and your opponent can take back.`), tags.add('trade');
+    else { sacrifice = true; tags.add('sac'); }
+  } else if (seeOn(after, move.to) >= 2 && move.piece !== 'p') {
+    sacrifice = true; tags.add('sac');
+  }
+
+  if (move.flags.includes('k') || move.flags.includes('q')) {
+    gains.push('[[castling|Castles]]: your king gets safer and a rook joins the game.');
+    tags.add('castle');
+  }
+  if (move.promotion) gains.push(`Promotes the pawn to a ${NAME[move.promotion]}.`);
+
+  if (after.inCheck()) { gains.push('Gives check, so your opponent has to deal with it right now.'); tags.add('check'); }
+
+  // Development / center (opening only)
+  const homeRank = c === 'w' ? '1' : '8';
+  if ('nb'.includes(move.piece) && move.from[1] === homeRank && moveNo <= 15) {
+    gains.push(`[[development|Brings out|Develops]] your ${NAME[move.piece]}, getting it into the game.`);
+    tags.add('develop');
+  }
+  const fB = features(before, c);
+  const fA = features(after, c);
+  if (moveNo <= 15 && (['d4', 'e4', 'd5', 'e5'].includes(move.to) || fA.center - fB.center >= 2)) {
+    gains.push('[[center|Fights for the middle of the board|Contests the center]], where pieces are strongest.');
+    tags.add('center');
+  }
+
+  // Tactics created by the move
+  const fork = forkFrom(after, move.to);
+  if (fork) {
+    const names = fork.map((t) => (t.piece === 'k' ? 'king' : `${NAME[t.piece]} on ${t.sq}`));
+    gains.push(`[[fork|Attacks two things at once|Forks]] the ${names.join(' and the ')}. They can't save everything.`);
+    tags.add('fork');
+  }
+  const line = lineTacticFrom(after, move.to);
+  if (line) {
+    const back = line.back.piece === 'k' ? 'king' : NAME[line.back.piece];
+    if (line.kind === 'pin') gains.push(`[[pin|Pins]] ${their(line.front.piece, line.front.sq)}: if it moves, the ${back} behind it is exposed.`);
+    else gains.push(`[[skewer|Skewers]] the ${line.front.piece === 'k' ? 'king' : NAME[line.front.piece]}: when it moves, the ${back} behind it can be taken.`);
+    tags.add(line.kind);
+  }
+  const disc = discoveredAfter(before, after, move);
+  if (disc.length) {
+    const d = disc[0];
+    gains.push(`[[discovered|Opens a line for your ${NAME[before.get(d.from).type]}|Discovered attack]]: moving out of the way lets your ${NAME[before.get(d.from).type]} on ${d.from} hit the ${d.piece === 'k' ? 'king' : NAME[d.piece]}.`);
+    tags.add('discovered');
+  }
+
+  // New threats (what we'd do if they ignore us)
+  const tB = threatsBy(before, c);
+  const tA = threatsBy(after, c);
+  if (tA.mate.length && !tB.mate.length && !after.inCheck()) {
+    gains.push(`[[threat|Threatens checkmate|Creates a mate threat]] with ${tA.mate[0].san}.`);
+    tags.add('mate-threat');
+  }
+  const prevWins = new Map(tB.wins.map((w) => [w.sq, w.gain]));
+  const newWin = tA.wins.find((w) => w.gain >= 2 && !(prevWins.get(w.sq) >= w.gain) && w.sq !== move.to);
+  if (newWin && !fork) {
+    gains.push(`[[threat|Threatens|Threatens]] to win ${their(newWin.piece, newWin.sq)}.`);
+    tags.add('threat');
+  }
+
+  // Did it fix a problem?
+  const looseBefore = loosePieces(before, c);
+  const looseAfter = loosePieces(after, c);
+  const afterMap = new Map(looseAfter.map((l) => [l.sq, l.gain]));
+  for (const l of looseBefore) {
+    if (l.gain < 2) continue;
+    if (l.sq === move.from) {
+      if (!afterMap.has(move.to)) { gains.push(`Moves ${your(l.piece, l.sq)} to safety. It was [[hanging|under attack and could be lost|hanging]].`); tags.add('saves'); }
+    } else if (!afterMap.has(l.sq)) { gains.push(`Protects ${your(l.piece, l.sq)}, which [[hanging|could have been taken for free|was hanging]].`); tags.add('saves'); }
+    break;
+  }
+  const oT_B = threatsBy(before, opp);
+  const oT_A = threatsBy(after, opp);
+  if (oT_B.mate.length && !oT_A.mate.length) { gains.push('Stops a checkmate threat.'); tags.add('defends-mate'); }
+
+  // Costs
+  for (const l of looseAfter) {
+    const was = looseBefore.find((x) => x.sq === l.sq);
+    if (was && was.gain >= l.gain) continue;
+    if (l.gain < 1) continue;
+    if (l.sq === move.to && move.captured && VAL[move.captured] >= l.gain) continue; // just a trade
+    if (l.sq === move.to && sacrifice) {
+      costs.push(`Your ${NAME[l.piece]} on ${l.sq} can be taken. That's a [[sacrifice|deliberate gift of material|sacrifice]], so it only works if something better comes back.`);
+    } else {
+      costs.push(`Leaves ${your(l.piece, l.sq)} [[hanging|where it can be taken for free|hanging]] (worth ${pts(l.gain)}).`);
+    }
+    tags.add('hangs');
+    break;
+  }
+  if (oT_A.mate.length && !oT_B.mate.length) { costs.push(`Allows your opponent a checkmate threat: ${oT_A.mate[0].san}.`); tags.add('allows-mate'); }
+  if (move.piece === 'k' && !(move.flags.includes('k') || move.flags.includes('q')) && fB.canCastle && !fA.canCastle) {
+    costs.push('Your king loses the right to [[castling|castle]] for the rest of the game.');
+    tags.add('lost-castling');
+  }
+  if (fA.castled && fA.shield < fB.shield && move.piece === 'p') {
+    costs.push('Pushes a pawn in front of your castled king, which leaves gaps the enemy can use. ([[kingsafety|King safety]])');
+    tags.add('weakens-king');
+  }
+  if (fA.pawns.doubled > fB.pawns.doubled && !tags.has('trade')) { costs.push('Your pawns end up stacked on one file ([[doubled|doubled pawns]]), which makes them weaker.'); tags.add('doubled'); }
+  if (fA.pawns.isolated > fB.pawns.isolated && !tags.has('trade')) { costs.push('Leaves a pawn with no friendly pawns next to it ([[isolated|isolated pawn]]), so only pieces can protect it.'); tags.add('isolated'); }
+  if (fB.bishopPair && !fA.bishopPair) { costs.push('Gives up your two bishops ([[bishoppair|bishop pair]]), a small long-term edge.'); }
+  if (moveNo <= 10 && move.piece === 'q' && fA.undeveloped >= 3 && !move.captured && !tags.has('threat') && !tags.has('mate-threat') && !tags.has('saves')) {
+    costs.push('Brings your queen out early while other pieces are still at home. She can get chased around, costing you time ([[tempo|tempo]]).');
+    tags.add('early-queen');
+  }
+  if (moveNo <= 12 && 'nb'.includes(move.piece) && move.from[1] !== homeRank && fA.undeveloped >= 2 && !move.captured && !tags.has('saves') && !fork) {
+    costs.push(`Moves a piece that already moved while ${fA.undeveloped} others are still at home ([[tempo|loses time]]).`);
+    tags.add('slow');
+  }
+  // Passed pawns are long-term assets
+  if (fA.pawns.passed > fB.pawns.passed) { gains.push('Creates a [[passed|pawn nothing can stop except pieces|passed pawn]], a long-term asset.'); tags.add('passed'); }
+
+  return { gains, costs, tags, move, after, sacrifice, fB, fA };
+}
+
+// Narrate a principal variation from `fen`. Returns {steps, net, mate, endFen}.
+export function narrateLine(fen, pv, pov, maxPlies = 6) {
+  const c = new Chess(fen);
+  const startBal = balance(c, pov);
+  const steps = [];
+  let i = 0;
+  for (; i < pv.length && i < 12; i++) {
+    const u = pv[i];
+    let m;
+    try { m = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] || undefined }); } catch { break; }
+    const mine = m.color === pov;
+    let note = '';
+    if (c.isCheckmate()) note = 'checkmate';
+    else if (m.captured) note = mine ? `takes the ${NAME[m.captured]}` : `takes your ${NAME[m.captured]}`;
+    else if (m.promotion) note = 'promotes';
+    else if (c.inCheck()) note = 'check';
+    if (i < maxPlies) steps.push({ san: m.san, uci: u, note, mine });
+    // keep going until the position is quiet so the material count is honest
+    if (i >= maxPlies - 1 && !m.captured && !c.inCheck()) { i++; break; }
+  }
+  return { steps, net: balance(c, pov) - startBal, mate: c.isCheckmate(), endFen: c.fen(), plies: i };
+}
+
+// ---------- full explanation for a played move ----------
+// ctx: {fen, uci, ply, before:{lines}, after:{lines}}
+// before.lines are from the mover's view, after.lines from the opponent's view.
+export function explainMove(ctx) {
+  const { fen, uci, ply } = ctx;
+  const pos = new Chess(fen);
+  const mover = pos.turn();
+  const legalCount = pos.moves().length;
+  const bl = ctx.before?.lines || [];
+  const al = ctx.after?.lines || [];
+  const best = bl[0];
+  const bestUci = best?.pv?.[0];
+  const bestWp = winPct(scoreToCp(best?.score));
+  const secondWp = bl[1] ? winPct(scoreToCp(bl[1].score)) : null;
+
+  const facts = moveFacts(fen, uci, ply);
+  let playedWp;
+  if (facts.after?.isCheckmate()) playedWp = 100;
+  else if (facts.after && (facts.after.isStalemate() || facts.after.isDraw())) playedWp = 50;
+  else playedWp = 100 - winPct(scoreToCp(al[0]?.score));
+  const isBest = uci === bestUci;
+  const cls = classify({ bestWp, playedWp: isBest ? bestWp : playedWp, isBest, secondWp, legalCount });
+  const loss = isBest ? 0 : Math.max(0, bestWp - playedWp);
+
+  const card = {
+    cls, mover, san: facts.move?.san || uci, uci, loss, bestWp, playedWp,
+    accuracy: moveAccuracy(loss),
+    gains: facts.gains, costs: facts.costs, tags: facts.tags,
+    why: [], soon: null, later: [], better: null, habit: null, cause: null,
+    bestUci, bestSan: bestUci ? uciToSan(fen, bestUci) : null,
+  };
+
+  // Near future: opponent's best reply line after the move
+  if (al[0]?.pv?.length && facts.after) {
+    card.soon = narrateLine(facts.after.fen(), al[0].pv, mover);
+  }
+
+  // Why it fails / cause
+  if (isBad(cls) && facts.after) card.cause = diagnose(card, facts, ctx, mover);
+
+  // Better move
+  if (!isBest && bestUci && cls !== 'forced') {
+    const bf = moveFacts(fen, bestUci, ply);
+    const bestLine = narrateLine(fen, best.pv, mover);
+    card.better = {
+      san: card.bestSan, uci: bestUci, gains: bf.gains, costs: bf.costs, line: bestLine,
+      wp: bestWp,
+    };
+    if (!bf.gains.length) {
+      card.better.gains = [describeQuiet(fen, bestUci, bf)];
+    }
+  }
+
+  // Long-term picture
+  card.later = longTerm(facts, card, mover);
+  card.habit = habitFor(card.cause, cls);
+  return card;
+}
+
+function describeQuiet(fen, uci, f) {
+  const p = f.move?.piece;
+  if (!p) return 'Keeps the position under control.';
+  const fA = f.fA, fB = f.fB;
+  if (fA && fB && fA.mobility - fB.mobility >= 4) return `Activates your ${NAME[p]}: it gets more useful squares to work from.`;
+  if (fA && fB && fA.shield > fB.shield) return 'Improves your king\'s shelter.';
+  return `A quiet improving move. It keeps your position solid without giving your opponent targets.`;
+}
+
+// Figure out the main reason a move went wrong.
+function diagnose(card, facts, ctx, mover) {
+  const opp = other(mover);
+  const why = card.why;
+  const soon = card.soon;
+  const reply = soon?.steps?.[0];
+  const afterFen = facts.after.fen();
+  const al = ctx.after.lines || [];
+  const bl = ctx.before.lines || [];
+  const replyScore = al[0]?.score;
+
+  // Allowed a forced mate
+  if (replyScore?.mate > 0) {
+    why.push(`After this, your opponent has a forced checkmate in ${replyScore.mate}. It starts with ${reply?.san || 'a strong reply'}.`);
+    return 'allowed-mate';
+  }
+  // Missed a forced mate
+  if (bl[0]?.score?.mate > 0 && !(replyScore?.mate < 0)) {
+    why.push(`You had a forced checkmate in ${bl[0].score.mate}, starting with ${card.bestSan}.`);
+    return 'missed-mate';
+  }
+  // Hung a piece: the opponent's best reply takes it
+  const loose = loosePieces(facts.after, mover);
+  if (reply && reply.note.startsWith('takes your') && loose.length) {
+    const target = loose.find((l) => al[0].pv[0].slice(2, 4) === l.sq) || loose[0];
+    if (target.gain >= 2 || (soon && soon.net <= -2)) {
+      why.push(`${cap(your(target.piece, target.sq))} [[hanging|can be taken for free|is hanging]]. Your opponent's best reply is ${reply.san}, winning ${worth(target.gain)}.`);
+      if (soon && -soon.net > target.gain) why.push(`It gets worse from there: by the end of the line you are ${pts(-soon.net)} down (${worth(-soon.net)}).`);
+      return 'hung-piece';
+    }
+  }
+  // Allowed a tactic: does the reply create a fork/pin?
+  if (reply) {
+    const rf = moveFacts(afterFen, al[0].pv[0]);
+    if (rf.tags.has('fork')) { why.push(`It allows ${reply.san}, which [[fork|attacks two of your pieces at once|forks your pieces]]. You can't save both.`); return 'allowed-fork'; }
+    if (rf.tags.has('pin') || rf.tags.has('skewer')) { why.push(`It allows ${reply.san}, which [[pin|pins one of your pieces|creates a pin]] and wins material.`); return 'allowed-pin'; }
+    if (rf.tags.has('discovered')) { why.push(`It allows ${reply.san}, a [[discovered|hidden attack from a piece behind|discovered attack]].`); return 'allowed-tactic'; }
+    if (rf.tags.has('mate-threat')) { why.push(`It allows ${reply.san}, which threatens checkmate and forces you onto the back foot.`); return 'allowed-threat'; }
+  }
+  // Ignored an existing threat
+  const before = new Chess(ctx.fen);
+  const tB = threatsBy(before, opp);
+  const stillLoose = loose[0];
+  if (tB.wins.length && stillLoose && tB.wins.some((w) => w.sq === stillLoose.sq || w.sq === ctx.uci.slice(2, 4))) {
+    why.push(`Your opponent was already attacking ${your(stillLoose.piece, stillLoose.sq)}, and this move doesn't deal with it.`);
+    return 'ignored-threat';
+  }
+  // Missed winning material
+  if (card.better || (bl[0]?.pv?.[0])) {
+    const bf = moveFacts(ctx.fen, bl[0].pv[0]);
+    if (bf.tags.has('wins-material') || bf.tags.has('fork') || bf.tags.has('pin') || bf.tags.has('skewer')) {
+      why.push(`You missed ${card.bestSan}. ${bf.gains[0] || ''}`.trim());
+      return 'missed-tactic';
+    }
+  }
+  // Loses material over the line
+  if (soon && soon.net <= -2) {
+    why.push(`After best play you end up ${pts(-soon.net)} down (${worth(-soon.net)}) within ${soon.plies} moves.`);
+    return 'loses-material';
+  }
+  // Positional
+  if (facts.tags.has('weakens-king')) { why.push('It weakens your king\'s pawn cover, and your opponent can aim pieces at the gaps.'); return 'king-safety'; }
+  if (facts.tags.has('early-queen') || facts.tags.has('slow')) { why.push('It spends time on a move that doesn\'t develop a new piece, so your opponent gets ahead in [[development|getting pieces into the game|development]].'); return 'development'; }
+  if (facts.tags.has('lost-castling')) { why.push('Moving the king gives up castling, so your king stays stuck in the middle.'); return 'king-safety'; }
+  why.push(`Nothing is lost right away, but the engine's choice ${card.bestSan} keeps a better position (you go from ${assess(card.bestWp)} to ${assess(card.playedWp)}). The difference is about long-term activity, which is harder to spell out.`);
+  return 'positional';
+}
+
+function cap(s) { return s[0].toUpperCase() + s.slice(1); }
+
+function longTerm(facts, card, mover) {
+  const out = [];
+  const { fA, fB } = facts;
+  if (fA && fB) {
+    if (fA.castled && !fB.castled) out.push('Your king is now tucked away, so you can focus on attacking.');
+    if (fA.undeveloped < fB.undeveloped && fA.undeveloped === 0) out.push('All your minor pieces are out. Next, connect your rooks and pick a plan.');
+    if (fA.pawns.passed > fB.pawns.passed) out.push('A passed pawn grows stronger as pieces come off the board. Endgames will favor you.');
+    if (fA.pawns.isolated > fB.pawns.isolated) out.push('An isolated pawn can become a target later, especially in the endgame.');
+    if (fA.bishopPair && !fB.bishopPair) out.push('You now have the two bishops, which get stronger as the board opens up.');
+  }
+  if (card.soon) {
+    const wpAfter = card.playedWp;
+    out.push(`With best play from here, the engine rates your position as ${assess(wpAfter)}.`);
+  }
+  return out.slice(0, 3);
+}
+
+export const HABITS = {
+  'hung-piece': 'Before you let go of a piece, ask: "What can capture it, and who defends it?" Count attackers and defenders.',
+  'allowed-fork': 'Check every enemy knight jump and queen move after your move. Forks hit two undefended or bigger pieces.',
+  'allowed-pin': 'Avoid lining up your king or queen behind another piece on the same line as an enemy bishop, rook or queen.',
+  'allowed-tactic': 'After choosing a move, look at it from your opponent\'s side: what checks, captures and threats do they get?',
+  'allowed-threat': 'Before each move, list your opponent\'s checks and captures. If they have a strong one, deal with it first.',
+  'allowed-mate': 'Every move, look at your king: which enemy pieces can reach it, and which squares around it are covered?',
+  'missed-mate': 'When your opponent\'s king looks weak, check every check you can give. Forcing moves first.',
+  'ignored-threat': 'Start every move by asking: "What did my opponent\'s last move threaten?"',
+  'missed-tactic': 'Scan all your captures and checks every move. Free material is easy to miss when you focus on a plan.',
+  'loses-material': 'Before trading, count: how many attackers and defenders on that square? Take only when the count is on your side.',
+  'king-safety': 'Keep the pawns in front of your castled king where they are unless you have a clear reason to move them.',
+  'development': 'In the opening, bring out a new piece every move: knights and bishops first, castle early, queen later.',
+  'positional': 'When nothing tactical is happening, improve your worst piece: find a better square for it.',
+};
+function habitFor(cause, cls) {
+  if (cause && HABITS[cause]) return HABITS[cause];
+  if (cls === 'great') return 'You found the only good move. Keep looking for forcing moves like this.';
+  return null;
+}
+
+export const CAUSE_LABEL = {
+  'hung-piece': 'Hung a piece',
+  'allowed-fork': 'Walked into a fork',
+  'allowed-pin': 'Walked into a pin',
+  'allowed-tactic': 'Allowed a tactic',
+  'allowed-threat': 'Allowed a big threat',
+  'allowed-mate': 'Allowed checkmate',
+  'missed-mate': 'Missed checkmate',
+  'ignored-threat': 'Ignored a threat',
+  'missed-tactic': 'Missed a win',
+  'loses-material': 'Lost material in a trade',
+  'king-safety': 'Weakened the king',
+  'development': 'Fell behind in development',
+  'positional': 'Positional slip',
+};
+
+export { moveUci, playUci };
