@@ -1,15 +1,15 @@
 // App shell: routing, settings, home, chess.com import, glossary tooltips.
-import { Board } from './board.js?v=7e41954c2a';
-import { mountReview, SAMPLE_PGN } from './review.js?v=7e41954c2a';
-import { mountPlay } from './play.js?v=7e41954c2a';
-import { icon } from './icons.js?v=7e41954c2a';
-import { store } from './store.js?v=7e41954c2a';
-import { termInfo } from './glossary.js?v=7e41954c2a';
-import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=7e41954c2a';
-import { topPatterns } from './profile.js?v=7e41954c2a';
-import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=7e41954c2a';
-import { drawBackgroundPosition } from './bgposition.js?v=7e41954c2a';
-import { engine } from './engine.js?v=7e41954c2a';
+import { Board } from './board.js?v=5f984f8e76';
+import { mountReview, SAMPLE_PGN } from './review.js?v=5f984f8e76';
+import { mountPlay } from './play.js?v=5f984f8e76';
+import { icon } from './icons.js?v=5f984f8e76';
+import { store } from './store.js?v=5f984f8e76';
+import { termInfo } from './glossary.js?v=5f984f8e76';
+import { staggerIn, EASE_OUT, canFade, canMove, installSprings, spring, installJelly, movePill } from './anim.js?v=5f984f8e76';
+import { topPatterns } from './profile.js?v=5f984f8e76';
+import { hapticsEnabled, setHaptics, haptic } from './haptics.js?v=5f984f8e76';
+import { drawBackgroundPosition } from './bgposition.js?v=5f984f8e76';
+import { engine } from './engine.js?v=5f984f8e76';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const root = document.documentElement;
@@ -166,6 +166,35 @@ function setupScrollHints() {
       hint.classList.toggle('is-gone', [...seen.values()].some(Boolean));
     }, { threshold: [0, 0.1, 0.18, 0.4] });
     [...split.children].filter((c) => c !== boardCol).forEach((c) => io.observe(c));
+    // the fold: the board column fills exactly the first screen, measured from where it really starts
+    const fold = () => {
+      if (!boardCol.offsetParent || innerWidth > 640) return;
+      const top = Math.round(boardCol.getBoundingClientRect().top + scrollY);
+      document.documentElement.style.setProperty('--fold-top', top + 'px');
+    };
+    new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) fold(); }).observe(boardCol);
+    addEventListener('resize', fold);
+    if (!CSS.supports?.('animation-timeline: view()')) setupCardRise(split, boardCol);
+  }
+}
+
+// Fallback for browsers without scroll-linked animations: each card below the board settles in once.
+function setupCardRise(split, boardCol) {
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      io.unobserve(e.target);
+      e.target.classList.add('rise-in');
+      requestAnimationFrame(() => e.target.classList.remove('rise-wait'));
+    }
+  }, { threshold: 0.08 });
+  const arm = (el) => {
+    if (innerWidth > 640 || el.getBoundingClientRect().top < innerHeight) return;
+    el.classList.add('rise-wait'); io.observe(el);
+  };
+  for (const aside of split.querySelectorAll(':scope > aside')) {
+    [...aside.children].forEach(arm);
+    new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.nodeType === 1 && arm(n)))).observe(aside, { childList: true });
   }
 }
 

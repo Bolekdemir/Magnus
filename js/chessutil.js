@@ -1,6 +1,6 @@
 // Chess logic helpers: material, exchanges, threats, tactical patterns, structure.
 // Everything here is deterministic and works on chess.js positions.
-import { Chess } from '../vendor/chess.js?v=7e41954c2a';
+import { Chess } from '../vendor/chess.js?v=5f984f8e76';
 
 export { Chess };
 
